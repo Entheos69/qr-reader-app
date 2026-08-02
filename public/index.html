@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Lector & Generador de QR Móvil</title>
+  <meta name="description" content="Lector de códigos QR en tiempo real usando la cámara del celular con soporte para HTTPS, historial y generador.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Iconos Lucide -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- HTML5 QR Code Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  
+  <!-- QRCode.js para generación -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Encabezado Principal -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i data-lucide="qr-code"></i>
+        </div>
+        <div>
+          <h1>QR Vision Pro</h1>
+          <span class="status-badge" id="camera-status">
+            <span class="status-dot"></span> <span id="status-text">Listo para escanear</span>
+          </span>
+        </div>
+      </div>
+      
+      <button id="toggle-audio-btn" class="icon-btn" title="Activar/Desactivar Sonido">
+        <i data-lucide="volume-2" id="audio-icon"></i>
+      </button>
+    </header>
+
+    <!-- Navegación por Pestañas -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="scanner">
+        <i data-lucide="camera"></i>
+        <span>Escáner</span>
+      </button>
+      <button class="tab-btn" data-tab="history">
+        <i data-lucide="history"></i>
+        <span>Historial</span>
+        <span class="badge" id="history-count">0</span>
+      </button>
+      <button class="tab-btn" data-tab="generator">
+        <i data-lucide="sparkles"></i>
+        <span>Crear QR</span>
+      </button>
+    </nav>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+      
+      <!-- PESTAÑA 1: ESCÁNER DE CÁMARA -->
+      <section id="tab-scanner" class="tab-content active">
+        <div class="camera-card">
+          <!-- Viewport del Escáner -->
+          <div id="reader-container" class="reader-viewport">
+            <div id="reader"></div>
+            
+            <!-- Superposición de Guía Visual de Escaneo -->
+            <div class="scanner-overlay" id="scanner-overlay">
+              <div class="scan-frame">
+                <div class="corner top-left"></div>
+                <div class="corner top-right"></div>
+                <div class="corner bottom-left"></div>
+                <div class="corner bottom-right"></div>
+                <div class="laser-beam"></div>
+              </div>
+              <p class="scan-instruction">Apunta la cámara hacia un código QR</p>
+            </div>
+          </div>
+
+          <!-- Barra de Controles de Cámara -->
+          <div class="camera-controls">
+            <button id="switch-camera-btn" class="btn btn-secondary">
+              <i data-lucide="switch-camera"></i>
+              <span>Cambiar Cámara</span>
+            </button>
+            <button id="restart-scan-btn" class="btn btn-primary" style="display: none;">
+              <i data-lucide="refresh-cw"></i>
+              <span>Escanear Nuevo</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 2: HISTORIAL -->
+      <section id="tab-history" class="tab-content">
+        <div class="section-card">
+          <div class="card-header">
+            <h2>Historial de Escaneos</h2>
+            <button id="clear-history-btn" class="btn-text danger">
+              <i data-lucide="trash-2"></i> Limpiar
+            </button>
+          </div>
+          <div id="history-list" class="history-list">
+            <!-- Renderizado dinámico desde JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 3: GENERADOR DE QR -->
+      <section id="tab-generator" class="tab-content">
+        <div class="section-card">
+          <h2>Generar Código QR</h2>
+          <p class="subtitle">Escribe un texto o enlace para crear tu código al instante</p>
+          
+          <div class="input-group">
+            <label for="qr-input">Contenido o Enlace URL</label>
+            <input type="text" id="qr-input" placeholder="https://ejemplo.com o tu texto..." autocomplete="off">
+          </div>
+
+          <button id="generate-qr-btn" class="btn btn-gradient width-full">
+            <i data-lucide="qr-code"></i> Generar Código
+          </button>
+
+          <div id="qr-result-box" class="qr-result-box" style="display: none;">
+            <div id="qrcode-display" class="qrcode-display"></div>
+            <div class="action-buttons mt-3">
+              <button id="download-qr-btn" class="btn btn-secondary">
+                <i data-lucide="download"></i> Descargar Imagen
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Modal de Resultado de Escaneo -->
+    <div id="result-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-icon success">
+            <i data-lucide="check-circle-2"></i>
+          </div>
+          <h3>¡Código Detectado!</h3>
+          <button id="close-modal-btn" class="close-btn">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="result-type-badge" id="result-type-badge">Enlace Web</div>
+          <div class="result-text-container">
+            <p id="scanned-result-text" class="scanned-text"></p>
+          </div>
+          <small id="scanned-time" class="timestamp"></small>
+        </div>
+
+        <div class="modal-footer">
+          <button id="copy-result-btn" class="btn btn-secondary">
+            <i data-lucide="copy"></i> Copiar
+          </button>
+          <a id="open-result-btn" href="#" target="_blank" class="btn btn-primary" style="display: none;">
+            <i data-lucide="external-link"></i> Abrir Enlace
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

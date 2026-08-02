@@ -1,0 +1,22 @@
+{
+  "name": "qr-reader-app",
+  "version": "1.0.0",
+  "description": "Lector y generador de códigos QR con cámara móvil en tiempo real, optimizado para Railway y GitHub",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "qr-code",
+    "qr-reader",
+    "mobile-camera",
+    "express",
+    "pwa"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
