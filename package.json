@@ -11,12 +11,9 @@
     "qr-code",
     "qr-reader",
     "mobile-camera",
-    "express",
     "pwa"
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "express": "^4.21.2"
-  }
+  "dependencies": {}
 }
