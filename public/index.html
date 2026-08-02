@@ -80,7 +80,9 @@
                 <div class="corner bottom-right"></div>
                 <div class="laser-beam"></div>
               </div>
-              <p class="scan-instruction">Apunta la cámara hacia un código QR</p>
+              <p class="scan-instruction">
+                <span id="camera-mode-label">Cámara Frontal</span> - Apunta hacia el código
+              </p>
             </div>
           </div>
 
@@ -90,6 +92,12 @@
               <i data-lucide="switch-camera"></i>
               <span>Cambiar Cámara</span>
             </button>
+            <label for="qr-file-input" class="btn btn-secondary cursor-pointer">
+              <i data-lucide="image"></i>
+              <span>Subir Imagen</span>
+            </label>
+            <input type="file" id="qr-file-input" accept="image/*" style="display: none;">
+
             <button id="restart-scan-btn" class="btn btn-primary" style="display: none;">
               <i data-lucide="refresh-cw"></i>
               <span>Escanear Nuevo</span>
