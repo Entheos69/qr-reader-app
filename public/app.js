@@ -1,9 +1,10 @@
 // App State
 let html5QrCode = null;
-let currentFacingMode = "user"; // Por defecto la Cámara Frontal como solicitó el usuario
+let currentFacingMode = "environment"; // Cámara Trasera por defecto para trabajo de campo
 let scanHistory = JSON.parse(localStorage.getItem('qr_history') || '[]');
 let audioEnabled = true;
 let isScanning = false;
+let currentStreamTrack = null;
 
 // Web Audio API Beep Generator
 function playBeepSound() {
@@ -31,7 +32,7 @@ function playBeepSound() {
 // Haptic Vibration Feedback
 function triggerVibration() {
   if ("vibrate" in navigator) {
-    navigator.vibrate(100);
+    navigator.vibrate(120);
   }
 }
 
@@ -94,7 +95,7 @@ function initAudioToggle() {
 function initScanner() {
   html5QrCode = new Html5Qrcode("reader");
 
-  // Iniciar con cámara frontal por defecto
+  // Iniciar con cámara trasera por defecto (ideal para campo)
   startScanner();
 
   document.getElementById('switch-camera-btn').addEventListener('click', switchCamera);
@@ -112,40 +113,83 @@ async function startScanner() {
   const cameraLabel = document.getElementById('camera-mode-label');
 
   overlay.style.display = 'flex';
-  statusText.innerText = "Escaneando...";
+  statusText.innerText = "Buscando enfoque...";
   if (cameraLabel) {
-    cameraLabel.innerText = currentFacingMode === "user" ? "Cámara Frontal" : "Cámara Trasera";
+    cameraLabel.innerText = currentFacingMode === "environment" ? "Cámara Trasera (Campo)" : "Cámara Frontal";
   }
 
+  // Configuración optimizada para cámara trasera de alta velocidad y enfoque continuo
   const config = {
-    fps: 15,
-    qrbox: { width: 240, height: 240 },
-    aspectRatio: 1.0
+    fps: 25, // 25 cuadros por segundo para respuesta rápida
+    qrbox: function(viewfinderWidth, viewfinderHeight) {
+      const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+      const size = Math.floor(minEdge * 0.72);
+      return { width: size, height: size };
+    },
+    aspectRatio: 1.0,
+    experimentalFeatures: {
+      useBarCodeDetectorIfSupported: true // Motor de escaneo por hardware nativo
+    },
+    videoConstraints: {
+      facingMode: currentFacingMode,
+      focusMode: "continuous", // Enfoque automático continuo
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    }
   };
-
-  const cameraConfig = { facingMode: currentFacingMode };
 
   try {
     await html5QrCode.start(
-      cameraConfig,
+      { facingMode: currentFacingMode },
       config,
       onScanSuccess,
       onScanError
     );
     isScanning = true;
+    statusText.innerText = "Escaneando...";
+
+    // Aplicar enfoque avanzado si el navegador lo soporta
+    applyAdvancedFocus();
   } catch (err) {
-    console.error("Error al iniciar cámara:", err);
-    statusText.innerText = "Error de cámara";
-    // Fallback alternativo
-    const altMode = currentFacingMode === "user" ? "environment" : "user";
+    console.warn("Fallo con restricción estricta de cámara trasera, usando modo genérico:", err);
     try {
-      await html5QrCode.start({ facingMode: altMode }, config, onScanSuccess, onScanError);
-      currentFacingMode = altMode;
-      if (cameraLabel) cameraLabel.innerText = altMode === "user" ? "Cámara Frontal" : "Cámara Trasera";
+      await html5QrCode.start(
+        currentFacingMode === "environment" ? { facingMode: "environment" } : { facingMode: "user" },
+        { fps: 20, qrbox: { width: 230, height: 230 } },
+        onScanSuccess,
+        onScanError
+      );
       isScanning = true;
+      statusText.innerText = "Escaneando...";
     } catch (e) {
-      alert("No se pudo acceder a la cámara. Asegúrate de conceder permisos en tu navegador.");
+      alert("No se pudo iniciar la cámara. Por favor concede permisos de cámara en tu navegador.");
     }
+  }
+}
+
+// Activa el enfoque continuo nativo y ajustes de video de la cámara trasera
+async function applyAdvancedFocus() {
+  try {
+    const videoElement = document.querySelector("#reader video");
+    if (videoElement && videoElement.srcObject) {
+      const track = videoElement.srcObject.getVideoTracks()[0];
+      if (track) {
+        currentStreamTrack = track;
+        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+        
+        // Configurar enfoque continuo si está disponible
+        const constraints = {};
+        if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+          constraints.focusMode = 'continuous';
+        }
+        
+        if (Object.keys(constraints).length > 0) {
+          await track.applyConstraints({ advanced: [constraints] });
+        }
+      }
+    }
+  } catch (e) {
+    console.log("Ajuste avanzado de enfoque no soportado por el navegador:", e);
   }
 }
 
@@ -154,6 +198,7 @@ async function stopScanner() {
     try {
       await html5QrCode.stop();
       isScanning = false;
+      currentStreamTrack = null;
       document.getElementById('scanner-overlay').style.display = 'none';
     } catch (err) {
       console.warn("Error al detener el escáner:", err);
@@ -163,8 +208,7 @@ async function stopScanner() {
 
 async function switchCamera() {
   await stopScanner();
-  // Alternar entre cámara frontal (user) y trasera (environment)
-  currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+  currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
   startScanner();
 }
 
@@ -181,10 +225,10 @@ function onScanSuccess(decodedText) {
 }
 
 function onScanError(errorMessage) {
-  // Errores por fotograma normal en escaneo; se ignoran en consola silenciosamente
+  // Ignorar errores normales por cuadro
 }
 
-// File Upload Scanner (Escaneo desde imagen)
+// File Upload Scanner (Subir imagen desde galería)
 function initFileUpload() {
   const fileInput = document.getElementById('qr-file-input');
   if (!fileInput) return;
