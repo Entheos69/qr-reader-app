@@ -1,10 +1,10 @@
 // App State
 let html5QrCode = null;
-let currentFacingMode = "environment"; // Cámara Trasera por defecto para trabajo de campo
+let camerasList = [];
+let selectedCameraId = null;
 let scanHistory = JSON.parse(localStorage.getItem('qr_history') || '[]');
 let audioEnabled = true;
 let isScanning = false;
-let currentStreamTrack = null;
 
 // Web Audio API Beep Generator
 function playBeepSound() {
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initHistory();
   initGenerator();
   initScanner();
-  initFileUpload();
+  initCaptures();
   initModal();
 });
 
@@ -91,14 +91,53 @@ function initAudioToggle() {
   });
 }
 
-// QR Scanner Initialization
-function initScanner() {
+// QR Scanner & Multi-Camera Enumeration
+async function initScanner() {
   html5QrCode = new Html5Qrcode("reader");
 
-  // Iniciar con cámara trasera por defecto (ideal para campo)
+  const cameraSelect = document.getElementById('camera-select');
+
+  try {
+    camerasList = await Html5Qrcode.getCameras();
+    
+    if (camerasList && camerasList.length > 0) {
+      cameraSelect.innerHTML = '';
+      
+      // Buscar la mejor cámara trasera por defecto
+      let defaultIndex = camerasList.findIndex(c => 
+        c.label.toLowerCase().includes('back') || 
+        c.label.toLowerCase().includes('trasera') || 
+        c.label.toLowerCase().includes('environment') ||
+        c.label.toLowerCase().includes('0')
+      );
+      if (defaultIndex === -1) defaultIndex = 0;
+
+      camerasList.forEach((cam, idx) => {
+        const option = document.createElement('option');
+        option.value = cam.id;
+        option.innerText = cam.label || `Lente Cámara ${idx + 1}`;
+        if (idx === defaultIndex) option.selected = true;
+        cameraSelect.appendChild(option);
+      });
+
+      selectedCameraId = camerasList[defaultIndex].id;
+
+      cameraSelect.addEventListener('change', async (e) => {
+        selectedCameraId = e.target.value;
+        await stopScanner();
+        startScanner();
+      });
+    } else {
+      cameraSelect.innerHTML = '<option value="">Cámara por defecto</option>';
+    }
+  } catch (err) {
+    console.warn("No se pudieron listar las cámaras individualmente:", err);
+    cameraSelect.innerHTML = '<option value="">Cámara del sistema</option>';
+  }
+
+  // Iniciar escáner
   startScanner();
 
-  document.getElementById('switch-camera-btn').addEventListener('click', switchCamera);
   document.getElementById('restart-scan-btn').addEventListener('click', () => {
     document.getElementById('restart-scan-btn').style.display = 'none';
     startScanner();
@@ -110,86 +149,46 @@ async function startScanner() {
 
   const overlay = document.getElementById('scanner-overlay');
   const statusText = document.getElementById('status-text');
-  const cameraLabel = document.getElementById('camera-mode-label');
 
   overlay.style.display = 'flex';
-  statusText.innerText = "Buscando enfoque...";
-  if (cameraLabel) {
-    cameraLabel.innerText = currentFacingMode === "environment" ? "Cámara Trasera (Campo)" : "Cámara Frontal";
-  }
+  statusText.innerText = "Escaneando...";
 
-  // Configuración optimizada para cámara trasera de alta velocidad y enfoque continuo
   const config = {
-    fps: 25, // 25 cuadros por segundo para respuesta rápida
-    qrbox: function(viewfinderWidth, viewfinderHeight) {
-      const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-      const size = Math.floor(minEdge * 0.72);
+    fps: 20,
+    qrbox: function(w, h) {
+      const minEdge = Math.min(w, h);
+      const size = Math.floor(minEdge * 0.75);
       return { width: size, height: size };
     },
     aspectRatio: 1.0,
     experimentalFeatures: {
-      useBarCodeDetectorIfSupported: true // Motor de escaneo por hardware nativo
-    },
-    videoConstraints: {
-      facingMode: currentFacingMode,
-      focusMode: "continuous", // Enfoque automático continuo
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
+      useBarCodeDetectorIfSupported: true
     }
   };
 
+  const cameraConstraint = selectedCameraId ? { deviceId: { exact: selectedCameraId } } : { facingMode: "environment" };
+
   try {
     await html5QrCode.start(
-      { facingMode: currentFacingMode },
+      cameraConstraint,
       config,
       onScanSuccess,
       onScanError
     );
     isScanning = true;
-    statusText.innerText = "Escaneando...";
-
-    // Aplicar enfoque avanzado si el navegador lo soporta
-    applyAdvancedFocus();
   } catch (err) {
-    console.warn("Fallo con restricción estricta de cámara trasera, usando modo genérico:", err);
+    console.warn("No se pudo iniciar con la cámara seleccionada, usando fallback:", err);
     try {
       await html5QrCode.start(
-        currentFacingMode === "environment" ? { facingMode: "environment" } : { facingMode: "user" },
-        { fps: 20, qrbox: { width: 230, height: 230 } },
+        { facingMode: "environment" },
+        config,
         onScanSuccess,
         onScanError
       );
       isScanning = true;
-      statusText.innerText = "Escaneando...";
     } catch (e) {
-      alert("No se pudo iniciar la cámara. Por favor concede permisos de cámara en tu navegador.");
+      alert("Por favor concede permisos de cámara en tu navegador.");
     }
-  }
-}
-
-// Activa el enfoque continuo nativo y ajustes de video de la cámara trasera
-async function applyAdvancedFocus() {
-  try {
-    const videoElement = document.querySelector("#reader video");
-    if (videoElement && videoElement.srcObject) {
-      const track = videoElement.srcObject.getVideoTracks()[0];
-      if (track) {
-        currentStreamTrack = track;
-        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-        
-        // Configurar enfoque continuo si está disponible
-        const constraints = {};
-        if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-          constraints.focusMode = 'continuous';
-        }
-        
-        if (Object.keys(constraints).length > 0) {
-          await track.applyConstraints({ advanced: [constraints] });
-        }
-      }
-    }
-  } catch (e) {
-    console.log("Ajuste avanzado de enfoque no soportado por el navegador:", e);
   }
 }
 
@@ -198,18 +197,11 @@ async function stopScanner() {
     try {
       await html5QrCode.stop();
       isScanning = false;
-      currentStreamTrack = null;
       document.getElementById('scanner-overlay').style.display = 'none';
     } catch (err) {
       console.warn("Error al detener el escáner:", err);
     }
   }
-}
-
-async function switchCamera() {
-  await stopScanner();
-  currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-  startScanner();
 }
 
 function onScanSuccess(decodedText) {
@@ -225,25 +217,40 @@ function onScanSuccess(decodedText) {
 }
 
 function onScanError(errorMessage) {
-  // Ignorar errores normales por cuadro
+  // Errores normales por cuadro en escaneo
 }
 
-// File Upload Scanner (Subir imagen desde galería)
-function initFileUpload() {
-  const fileInput = document.getElementById('qr-file-input');
-  if (!fileInput) return;
+// Captura Nativa & Galería
+function initCaptures() {
+  // Captura Nativa HD para Campo
+  const nativeInput = document.getElementById('qr-native-capture');
+  if (nativeInput) {
+    nativeInput.addEventListener('change', async (e) => {
+      if (e.target.files.length === 0) return;
+      const file = e.target.files[0];
+      try {
+        const result = await html5QrCode.scanFile(file, true);
+        onScanSuccess(result);
+      } catch (err) {
+        alert("No se pudo leer el código QR en la foto. Intenta tomar la foto con más luz.");
+      }
+    });
+  }
 
-  fileInput.addEventListener('change', async (e) => {
-    if (e.target.files.length === 0) return;
-    const imageFile = e.target.files[0];
-    
-    try {
-      const result = await html5QrCode.scanFile(imageFile, true);
-      onScanSuccess(result);
-    } catch (err) {
-      alert("No se detectó ningún código QR en la imagen seleccionada.");
-    }
-  });
+  // Galería
+  const fileInput = document.getElementById('qr-file-input');
+  if (fileInput) {
+    fileInput.addEventListener('change', async (e) => {
+      if (e.target.files.length === 0) return;
+      const file = e.target.files[0];
+      try {
+        const result = await html5QrCode.scanFile(file, true);
+        onScanSuccess(result);
+      } catch (err) {
+        alert("No se detectó ningún código QR en la imagen seleccionada.");
+      }
+    });
+  }
 }
 
 // Modal handling

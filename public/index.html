@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Lector & Generador de QR Móvil</title>
-  <meta name="description" content="Lector de códigos QR en tiempo real usando la cámara del celular con soporte para HTTPS, historial y generador.">
+  <meta name="description" content="Lector de códigos QR profesional para trabajo en campo con soporte multicámara y captura nativa.">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,9 +64,17 @@
     <!-- Contenido Principal -->
     <main class="main-content">
       
-      <!-- PESTAÑA 1: ESCÁNER DE CÁMARA -->
+      <!-- PESTAÑA 1: ESCÁNER DE CÁMARA PARA CAMPO -->
       <section id="tab-scanner" class="tab-content active">
         <div class="camera-card">
+          <!-- Selector de Lente de Cámara para Celulares Multicámara -->
+          <div class="camera-select-bar">
+            <label for="camera-select"><i data-lucide="aperture"></i> Seleccionar Lente:</label>
+            <select id="camera-select" class="camera-dropdown">
+              <option value="">Cargando cámaras...</option>
+            </select>
+          </div>
+
           <!-- Viewport del Escáner -->
           <div id="reader-container" class="reader-viewport">
             <div id="reader"></div>
@@ -81,27 +89,32 @@
                 <div class="laser-beam"></div>
               </div>
               <p class="scan-instruction">
-                <span id="camera-mode-label">Cámara Frontal</span> - Apunta hacia el código
+                <span>Mantén a 20-30 cm de distancia</span>
               </p>
             </div>
           </div>
 
-          <!-- Barra de Controles de Cámara -->
-          <div class="camera-controls">
-            <button id="switch-camera-btn" class="btn btn-secondary">
-              <i data-lucide="switch-camera"></i>
-              <span>Cambiar Cámara</span>
-            </button>
-            <label for="qr-file-input" class="btn btn-secondary cursor-pointer">
-              <i data-lucide="image"></i>
-              <span>Subir Imagen</span>
+          <!-- Barra de Controles de Campo -->
+          <div class="camera-controls field-controls">
+            <!-- Botón 1: Captura Nativa con Enfoque de Sistema (HD) -->
+            <label for="qr-native-capture" class="btn btn-primary width-full">
+              <i data-lucide="camera"></i>
+              <span>Tomar Foto HD (Cámara Nativa)</span>
             </label>
-            <input type="file" id="qr-file-input" accept="image/*" style="display: none;">
+            <input type="file" id="qr-native-capture" accept="image/*" capture="environment" style="display: none;">
 
-            <button id="restart-scan-btn" class="btn btn-primary" style="display: none;">
-              <i data-lucide="refresh-cw"></i>
-              <span>Escanear Nuevo</span>
-            </button>
+            <div class="controls-row">
+              <label for="qr-file-input" class="btn btn-secondary flex-1">
+                <i data-lucide="image"></i>
+                <span>Galería</span>
+              </label>
+              <input type="file" id="qr-file-input" accept="image/*" style="display: none;">
+
+              <button id="restart-scan-btn" class="btn btn-secondary flex-1" style="display: none;">
+                <i data-lucide="refresh-cw"></i>
+                <span>Reintentar</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>

@@ -178,7 +178,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Camera Card & Scanner Viewport */
+/* Camera Card & Dropdown */
 .camera-card {
   background: var(--bg-card);
   border: 1px solid var(--glass-border);
@@ -187,6 +187,34 @@ body {
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
+}
+
+.camera-select-bar {
+  padding: 10px 14px;
+  background: rgba(10, 15, 26, 0.9);
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.camera-dropdown {
+  flex: 1;
+  background: rgba(20, 27, 45, 0.9);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  outline: none;
+}
+
+.camera-dropdown option {
+  background: #111726;
+  color: #fff;
 }
 
 .reader-viewport {
@@ -221,22 +249,22 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.2);
   z-index: 5;
 }
 
 .scan-frame {
-  width: 220px;
-  height: 220px;
+  width: 240px;
+  height: 240px;
   position: relative;
-  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.4);
   border-radius: var(--radius-md);
 }
 
 .corner {
   position: absolute;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-color: var(--accent-secondary);
   border-style: solid;
 }
@@ -263,22 +291,31 @@ body {
 
 .scan-instruction {
   margin-top: 24px;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(0, 0, 0, 0.6);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.65);
   padding: 6px 14px;
   border-radius: var(--radius-full);
   backdrop-filter: blur(8px);
 }
 
-/* Controls */
+/* Field Controls */
 .camera-controls {
   padding: 14px;
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  justify-content: center;
-  background: rgba(15, 22, 38, 0.8);
+  background: rgba(15, 22, 38, 0.85);
 }
+
+.controls-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.flex-1 { flex: 1; }
+.cursor-pointer { cursor: pointer; }
 
 /* Buttons */
 .btn {
@@ -548,7 +585,7 @@ body {
   padding: 14px;
   word-break: break-all;
   max-height: 140px;
-  overflow-y: auto;
+  overflow-y.auto;
 }
 
 .scanned-text {
