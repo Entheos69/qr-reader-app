@@ -1,6 +1,6 @@
-# 📱 Reporte de Proyecto: QR Vision Pro (Fases 1, 2 y 3)
+# 📱 Reporte de Proyecto: QR Vision Pro (Fases 1, 2, 3 y 4)
 
-**Fecha de Elaboración**: 2 de Agosto de 2026  
+**Fecha de Elaboración**: 3 de Agosto de 2026  
 **Proyecto**: Lector & Generador de QR Móvil para Ensayos de Campo (INDUPOX)  
 **Ubicación del Código**: `c:\Users\ajmon\proyectos\qr_reader`  
 **Repositorio GitHub**: [https://github.com/Entheos69/qr-reader-app.git](https://github.com/Entheos69/qr-reader-app.git)  
@@ -10,9 +10,15 @@
 
 ## 📋 Resumen Ejecutivo
 
-Durante esta sesión se diseñó, construyó, desplegó y optimizó el sistema **QR Vision Pro**, una plataforma integral de hardware/software para la lectura, caracterización, bitácora de ensayos y exportación de muestras de laboratorio y campo de **INDUPOX / INDUCOP**.
+El sistema **QR Vision Pro** es una plataforma integral de hardware/software para la lectura, caracterización, bitácora de ensayos y adquisición de muestras de laboratorio y campo de **INDUPOX / INDUCOP**.
 
-El sistema resuelve los problemas típicos de escaneo en celulares (enfoque de cámara trasera, conectividad HTTPS) y evoluciona desde un escáner simple hasta una **Plataforma Dinámica de Control de Ensayos** capaz de sincronizar datos en tiempo real entre operarios en campo y la computadora de escritorio.
+En la sesión del **3 de Agosto de 2026 (Fase 4)**, la plataforma evolucionó hacia un **Sistema Ultrarrobusto de Adquisición de Datos en Tiempo Real**, delimitando explícitamente el dominio a la captura e integridad de datos en campo (dejando análisis posteriores fuera del alcance). Se añadieron funcionalidades clave:
+1. **Pre-Análisis en Tiempo Real de Captura**: Validación automática de rangos de tolerancia (temperatura y dureza) para alertar al operador preventivamente antes de registrar datos erróneos.
+2. **Soporte PWA y Funcionamiento 100% Offline**: Service Worker e IndexedDB para trabajar en naves industriales sin señal y sincronizar automáticamente al recuperar la red.
+3. **Persistencia en SQLite Transaccional**: Incorporación de SQLite nativo (`node:sqlite`) sin dependencias npm externas.
+4. **Sincronización en Tiempo Real (SSE)**: Transmisión instantánea de datos vía Server-Sent Events desde los celulares en campo al Dashboard de PC.
+5. **Control de Hardware (Linterna/Flash)**: Botón de linterna física para entornos con iluminación deficiente.
+6. **Exportación Estructurada (CSV / TSV / JSON / YAML)**: Formatos de intercambio limpios para importación directa en sistemas LIMS o Excel.
 
 ---
 
@@ -20,83 +26,89 @@ El sistema resuelve los problemas típicos de escaneo en celulares (enfoque de c
 
 ```mermaid
 graph TD
-    A[Celular Móvil en Campo] -->|Cámara Ultra Gran Angular / Captura HD| B[App Web Cliente]
-    B -->|Escaneo QR / inducop.mx/r/M04| C[Motor de Caracterización]
-    B -->|Registro de Mediciones: Temp, Dureza, Operador| D[API REST Node.js Server]
-    D -->|Persistencia JSON| E[(Base de Datos: scans.json / events.json)]
-    D -->|WebSocket / Polling| F[Dashboard PC Escritorio]
-    F -->|File System Access API| G[Archivos JSON / YAML en PC]
-    F -->|Impresión Gemela| H[Pliego PDF Etiquetas 70x50 & 50x20]
+    A[Celular Móvil / PWA Offline] -->|Cámara Ultra Gran Angular / Flash Linterna| B[App Web Cliente / Service Worker]
+    B -->|Escaneo QR / inducop.mx/r/M04| C[Motor de Caracterización Censo v2.0]
+    B -->|Pre-Análisis Preventivo de Captura| D[Modal de Ensayos / Eventos]
+    D -->|Cola Local IndexedDB / Sincronización Network| E[API REST Node.js Server]
+    E -->|Validación de Rangos & Cooldown| F[Motor Pre-Análisis Servidor]
+    F -->|Persistencia Transaccional| G[(Base de Datos SQLite: qr_vision.db)]
+    E -->|Server-Sent Events / SSE| H[Dashboard PC Escritorio en Vivo]
+    H -->|File System Access API| I[Archivos JSON / YAML / CSV en PC]
+    H -->|Impresión Gemela| J[Pliego PDF Etiquetas 70x50 & 50x20]
 ```
 
-### 1. Backend Servidor (Node.js Nativo - 0 Dependencias)
-- **Servidor HTTP Ligero**: Construido únicamente con los módulos estándar `http`, `fs` y `path` de Node.js, eliminando problemas de instalación de paquetes externos.
-- **Enlace de Puerto Dinámico**: Lee automáticamente `process.env.PORT` para despliegue directo en **Railway**.
+### 1. Backend Servidor (Node.js Nativo + SQLite - 0 Dependencias externas)
+- **Servidor HTTP Ligero & SQLite Transaccional**: Módulos estándar `http`, `fs`, `path` y el módulo nativo `node:sqlite` (Node.js v22).
+- **Canal de Transmisión SSE (`GET /api/stream`)**: Transmite actualizaciones instantáneas a todos los escritorios conectados sin recargar pantalla (*polling* fallback si se requiere).
+- **Motor de Pre-Análisis de Captura**:
+  - Valida tolerancias de temperatura (10°C - 50°C) y dureza (0 - 100 Shore).
+  - Detecta ensayos recientes en la misma muestra (<60 min) para evitar duplicados por rebote de escaneo.
 - **Endpoints API REST**:
-  - `GET /api/scans`: Retorna la lista de escaneos fusionados con sus eventos de bitácora.
-  - `POST /api/scans`: Recibe y caracteriza nuevos escaneos o lotes desde el celular.
-  - `DELETE /api/scans/:id` & `DELETE /api/scans`: Eliminación individual o total de lecturas.
-  - `GET /api/events` & `POST /api/events`: Registro y consulta de mediciones de ensayo.
-  - `GET /api/censo` & `POST /api/censo`: Gestor de catálogo de objetos y corridas (CRUD).
-  - `POST /api/export`: Generador y exportador de archivos JSON/YAML en el servidor.
+  - `GET /api/scans` & `POST /api/scans`: Caracterización y registro de escaneos.
+  - `DELETE /api/scans/:id` & `DELETE /api/scans`: Limpieza individual o total.
+  - `GET /api/events` & `POST /api/events`: Registro de bitácora con flags de pre-análisis.
+  - `GET /api/censo` & `POST /api/censo`: Catálogo Censo INDUPOX (CRUD).
+  - `POST /api/export`: Exportador a archivos JSON, YAML, CSV y TSV.
 
 ---
 
-### 2. Frontend Móvil (Escáner & Registro en Campo)
-- **Ubicación**: `public/index.html` y `public/app.js`
-- **Diseño Móvil**: Estética *glassmorphic* sobre fondo oscuro con fuentes de Google Fonts (`Outfit` / `Inter`), micro-animaciones láser y respuesta haptic/audio (`Web Audio API`).
-- **Enfoque de Cámara de Campo Solucionado**:
-  - Selector dinámico de lentes multicámara que identifica y fija automáticamente la **cámara Ultra Gran Angular posterior** (con persistencia en `localStorage`).
-  - Botón de **Tomar Foto HD (Cámara Nativa)** (`capture="environment"`) que aprovecha el 100% del hardware de autoenfoque, macro y flash del sistema operativo.
-  - Botón **Sincronizar Historial con PC** para transmitir escaneos fuera de línea.
-  - Modal **Adosar Evento de Prueba** para registrar temperatura, dureza, observaciones y operador en campo.
+### 2. Frontend Móvil PWA (Escáner & Adquisición en Campo)
+- **Ubicación**: `public/index.html`, `public/app.js`, `public/manifest.json`, `public/sw.js`
+- **PWA & Offline First**:
+  - Instalable como app nativa en iOS/Android.
+  - Precaché de app shell y cola local `localStorage`/`IndexedDB` que sincroniza al reconectar.
+  - Indicador de estado de red (`Online` / `Offline`) en vivo.
+- **Control de Hardware Móvil**:
+  - Selector de cámara **Ultra Gran Angular posterior**.
+  - Control de **Linterna / Flash** (`MediaStreamTrack` constraints) para zonas oscuras.
+  - Botón de **Foto HD Nativa** (`capture="environment"`).
+- **Formulario con Pre-Análisis Preventivo**:
+  - Banner de aviso en tiempo real que alerta al operador si ingresa un valor fuera de norma antes de enviar.
 
 ---
 
 ### 3. Superficie de Consulta en Escritorio (Dashboard PC)
 - **Ubicación**: `public/dashboard.html`
-- **Métricas KPIs**: Contadores en vivo de lecturas totales, muestras *Operativas (70x50)* e *Identidad (50x20)*.
-- **Buscador & Filtros**: Búsqueda por código, tipo, descripción, temperatura o nombre del operador.
-- **Acciones por Renglón**:
-  - **Eliminar 🗑️**: Borrado individual de renglones.
-  - **Exportar JSON / YAML**: Descarga directa al navegador e inserción mediante **File System Access API** (`window.showDirectoryPicker()`) a carpetas de la PC.
+- **Actualización en Tiempo Real (SSE)**: Refresco instantáneo al recibir escaneos o mediciones desde campo.
+- **Columna de Pre-Análisis**: Distintivo visual (`✓ Verificado` / `⚠️ Advertencia`) con detalle explicativo del rango o aviso.
+- **Exportación Multiformato**:
+  - Exportación individual o en lote a **JSON, YAML, CSV y TSV**.
+  - Selección de carpeta destino local con **File System Access API** (`window.showDirectoryPicker()`).
 
 ---
 
 ### 4. Integración del Censo de Objetos INDUPOX Set v2.0
 - **Ubicación**: `data/censo_objetos_v2.json`
 - Contiene el catálogo completo de **77 objetos oficiales**:
-  - **37 Etiquetas Operativas (70x50)**: `M04`, `M08` a `M22`, `A25` a `M32`, `M38` a `M41`, `M45` a `M52`, `M55` (con detalle de peso de resina, endurecedor, arcilla, cizalla y notas de seguridad EPP).
-  - **40 Etiquetas de Identidad (50x20)**: `P05` a `P07`, `D13` a `D17`, `F24A/B`, `P33` a `P37`, `U38AC` a `U41TF`, `K44`, `R45` a `R47`, `F42`, `F43`, `F54A/B`, `P56` (probetas, placas de descuelgue, celdas de unión y frascos).
+  - **37 Etiquetas Operativas (70x50)**: `M04`, `M08` a `M22`, `A25` a `M32`, `M38` a `M41`, `M45` a `M52`, `M55` (resina, endurecedor, arcilla, cizalla y notas EPP).
+  - **40 Etiquetas de Identidad (50x20)**: `P05` a `P07`, `D13` a `D17`, `F24A/B`, `P33` a `P37`, `U38AC` a `U41TF`, `K44`, `R45` a `R47`, `F42`, `F43`, `F54A/B`, `P56`.
 
 ---
 
 ### 5. Impresor Aglutinado de Etiquetas PDF
-- Pestaña interactiva en el Dashboard para seleccionar cualquier conjunto de objetos del catálogo o corridas nuevas creadas.
-- Generación de pliegos oficiales en **par gemelo (Lado Izquierdo: Objeto | Lado Derecho: Hoja del Cuaderno)** con códigos QR vectoriales y reglas CSS `@media print` para exportación a PDF multi-página.
+- Generación de pliegos oficiales en **par gemelo (Objeto | Hoja del Cuaderno)** con códigos QR vectoriales y reglas CSS `@media print` para exportación a PDF multi-página.
 
 ---
 
-## ⏱️ Hitos y Cronología de la Sesión
+## ⏱️ Hitos y Cronología del Proyecto
 
-1. **Fase 1: Creación del Proyecto & Servidor Ligero**
-   - Inicialización del proyecto en `c:\Users\ajmon\proyectos\qr_reader`.
-   - Creación del servidor nativo `server.js` y script ejecutable `start.bat`.
-   - Repositorio Git inicializado y subida a GitHub (`Entheos69/qr-reader-app.git`).
-   - Despliegue en Railway con certificado seguro **HTTPS** (obligatorio para la cámara del celular).
+1. **Fase 1: Servidor Ligero & Despliegue en Railway (2 Ago 2026)**
+   - Servidor HTTP nativo `server.js` desplegado en Railway con certificado seguro **HTTPS**.
 
-2. **Fase 2: Diagnóstico e Investigación de Cámara Trasera**
-   - Investigación sobre el comportamiento de multicámaras en Safari/Chrome web.
-   - Implementación del selector de lentes físicas que permitió descubrir que la **Cámara Ultra Gran Angular Posterior** es la ideal para escaneo de campo.
-   - Implementación del botón de captura con cámara nativa HD (`capture="environment"`).
+2. **Fase 2: Diagnóstico e Investigación de Cámara Trasera (2 Ago 2026)**
+   - Selector de cámara Ultra Gran Angular posterior y captura nativa HD.
 
-3. **Fase 3: Sincronización Celular-PC, Bitácora & Exportaciones JSON/YAML**
-   - Creación del Dashboard de escritorio (`/dashboard.html`).
-   - Integración del catálogo **Censo INDUPOX Set v2.0** (77 objetos).
-   - Implementación de la **Bitácora de Eventos de Prueba** (temperatura, dureza, observaciones, operador) adosable desde el celular.
-   - Inserción y fusión automática de los campos de campo dentro de la estructura exportada JSON/YAML.
-   - Selector de directorio nativo de PC con `window.showDirectoryPicker()` para guardar directamente en cualquier carpeta especificada por el usuario.
-   - Creador y compilador de pliegos de etiquetas PDF aglutinadas.
+3. **Fase 3: Sincronización Celular-PC & Dashboard (2 Ago 2026)**
+   - Integración Censo INDUPOX v2.0 (77 objetos), bitácora de eventos y exportador JSON/YAML.
+
+4. **Fase 4: PWA Offline, Pre-Análisis de Captura & SQLite (3 Ago 2026)**
+   - PWA instalable con Service Worker y cola de sincronización offline.
+   - Motor de Pre-Análisis preventivo de rangos de calidad durante la captura.
+   - Migración a base de datos transaccional SQLite (`node:sqlite`).
+   - Transmisión en tiempo real vía SSE (`Server-Sent Events`).
+   - Botón de control de linterna/flash de cámara.
+   - Exportador a archivos CSV y TSV para sistemas LIMS.
+   - Commit y push a GitHub (`cbd7ff1`) activando el despliegue automatizado en Railway.
 
 ---
 
@@ -106,52 +118,53 @@ graph TD
 c:\Users\ajmon\proyectos\qr_reader\
 ├── data/
 │   ├── censo_objetos_v2.json      (Base de datos del Censo 77 objetos INDUPOX)
-│   ├── events.json                (Almacenamiento de Bitácora de Ensayos)
-│   └── scans.json                 (Historial centralizado de lecturas)
-├── exports/                       (Carpeta destino por defecto para JSON/YAML)
+│   ├── events.json                (Historial JSON plano de eventos)
+│   ├── qr_vision.db               (Base de datos relacional SQLite transaccional)
+│   └── scans.json                 (Historial JSON plano de lecturas)
+├── exports/                       (Carpeta destino por defecto para JSON/YAML/CSV)
 ├── public/
-│   ├── app.js                     (Lógica cliente móvil, cámara, audio y sync)
-│   ├── dashboard.html             (Superficie de consulta PC, CRUD e impresor PDF)
-│   ├── index.html                 (Interfaz web móvil del escáner)
-│   └── styles.css                 (Sistema de diseño Glassmorphism)
-├── .gitignore                     (Exclusiones para Git)
+│   ├── app.js                     (Lógica cliente móvil, cámara, offline y pre-análisis)
+│   ├── dashboard.html             (Dashboard PC en vivo con SSE, CRUD e impresor PDF)
+│   ├── index.html                 (Interfaz web móvil del escáner PWA)
+│   ├── manifest.json              (Manifest PWA para instalación en celulares)
+│   ├── styles.css                 (Sistema de diseño Glassmorphism & badges)
+│   └── sw.js                      (Service Worker para funcionamiento offline)
+├── .gitignore                     (Exclusiones de repositorios y SQLite local)
 ├── package.json                   (Configuración del proyecto Node.js)
 ├── README.md                      (Guía rápida del usuario)
-├── REPORTE_PROYECTO_QR_VISION_PRO.md (Este reporte)
-├── server.js                      (Servidor HTTP REST API nativo)
+├── REPORTE_PROYECTO_QR_VISION_PRO.md (Este reporte actualizado)
+├── server.js                      (Servidor HTTP REST, SSE y motor SQLite)
 └── start.bat                      (Lanzador local independiente)
 ```
 
 ---
 
-## 💡 Ejemplo de Estructura JSON y YAML Exportada
+## 💡 Ejemplo de Datos de Adquisición Exportados (Pre-Análisis Enriquecido)
 
 ```yaml
-id: "1785726413301"
-timestamp: "1785726372319"
-date: "09:06 p.m."
+id: "1785769618515"
+timestamp: "1785769618515"
+date: "3/8/2026, 9:06:58 a.m."
 dispositivo: "Celular Móvil"
 caracterizado: "true"
-codigo: "M08"
+codigo: "M04"
 tipo: "OPERATIVA"
-nombre: "Dispersión arcilla 0 %"
-corrida: "corrida 8"
-composicion: "100.00 g resina + 0.00 g arcilla · blanco"
-notas: ""
-epp: "EPP: nitrilo + gafas · máx. 200 g concentrados"
-detalles: ""
-tipoEvento: "Prueba de Dureza"
-temperatura: "23.5 °C"
+nombre: "Mezcla patrón 200 g"
+corrida: "corrida 4"
+composicion: "120.00 g resina + 80.00 g endurecedor"
+tipoEvento: "Medición de Ensayo"
+temperatura: "75 °C"
 dureza: "65 Shore D"
-observaciones: "Curado correcto a 24h, sin descuelgue"
-operador: "Juan Pérez"
-raw: "https://inducop.mx/r/M08"
+estadoPreAnalisis: "ADVERTENCIA"
+advertencias: "Temperatura fuera de tolerancia norma (75 °C vs 10-50°C)"
+operador: "Técnico de Campo"
+raw: "https://inducop.mx/r/M04"
 ```
 
 ---
 
 ## 📌 Enlaces Útiles
 
-* **Web Móvil (Celular)**: [https://qr-reader-app-production.up.railway.app](https://qr-reader-app-production.up.railway.app)
-* **Dashboard PC (Escritorio)**: [https://qr-reader-app-production.up.railway.app/dashboard.html](https://qr-reader-app-production.up.railway.app/dashboard.html)
+* **Web Móvil PWA (Celular)**: [https://qr-reader-app-production.up.railway.app](https://qr-reader-app-production.up.railway.app)
+* **Dashboard PC (Escritorio en Vivo)**: [https://qr-reader-app-production.up.railway.app/dashboard.html](https://qr-reader-app-production.up.railway.app/dashboard.html)
 * **Repositorio GitHub**: [https://github.com/Entheos69/qr-reader-app.git](https://github.com/Entheos69/qr-reader-app.git)
