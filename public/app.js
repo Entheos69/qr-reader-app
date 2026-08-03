@@ -5,6 +5,7 @@ let selectedCameraId = localStorage.getItem('preferred_camera_id') || null;
 let scanHistory = JSON.parse(localStorage.getItem('qr_history') || '[]');
 let audioEnabled = true;
 let isScanning = false;
+let currentScannedCode = null;
 
 // Web Audio API Beep Generator
 function playBeepSound() {
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCaptures();
   initModal();
   initSyncWithPC();
+  initEventLogging();
 });
 
 // Transmitir escaneos al Servidor Central PC
@@ -92,6 +94,56 @@ function initSyncWithPC() {
       lucide.createIcons();
     }
   });
+}
+
+// Registro de Eventos y Mediciones de Ensayos desde el Celular
+function initEventLogging() {
+  const addEventBtn = document.getElementById('add-event-btn');
+  const eventForm = document.getElementById('event-form');
+  const cancelEventBtn = document.getElementById('cancel-event-btn');
+
+  if (addEventBtn) {
+    addEventBtn.addEventListener('click', () => {
+      document.getElementById('event-modal').style.display = 'flex';
+      document.getElementById('event-code-display').innerText = currentScannedCode || 'Muestra';
+    });
+  }
+
+  if (cancelEventBtn) {
+    cancelEventBtn.addEventListener('click', () => {
+      document.getElementById('event-modal').style.display = 'none';
+    });
+  }
+
+  if (eventForm) {
+    eventForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        codigo: currentScannedCode,
+        tipoEvento: document.getElementById('event-type').value,
+        temperatura: document.getElementById('event-temp').value,
+        dureza: document.getElementById('event-hardness').value,
+        observaciones: document.getElementById('event-obs').value,
+        operador: document.getElementById('event-operator').value || 'Operador de Campo'
+      };
+
+      try {
+        const res = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`¡Evento de Ensayo registrado para ${currentScannedCode}! Sincronizado con la PC.`);
+          document.getElementById('event-modal').style.display = 'none';
+          eventForm.reset();
+        }
+      } catch (err) {
+        alert("Error al registrar el evento de prueba.");
+      }
+    });
+  }
 }
 
 // Navigation Tabs
@@ -186,7 +238,6 @@ async function initScanner() {
     cameraSelect.innerHTML = '<option value="">Cámara del sistema</option>';
   }
 
-  // Iniciar escáner
   startScanner();
 
   document.getElementById('restart-scan-btn').addEventListener('click', () => {
@@ -259,6 +310,12 @@ function onScanSuccess(decodedText) {
   playBeepSound();
   triggerVibration();
   stopScanner();
+
+  currentScannedCode = decodedText.trim();
+  const match = currentScannedCode.match(/\/r\/([A-Za-z0-9]+)/i) || currentScannedCode.match(/([A-Z0-9]{2,6})$/i);
+  if (match && match[1]) {
+    currentScannedCode = match[1].toUpperCase();
+  }
 
   document.getElementById('restart-scan-btn').style.display = 'inline-flex';
   document.getElementById('status-text').innerText = "Código detectado";

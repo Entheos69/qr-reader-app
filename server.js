@@ -8,6 +8,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DEFAULT_EXPORT_DIR = path.join(__dirname, 'exports');
 const SCANS_FILE = path.join(DATA_DIR, 'scans.json');
 const CENSO_FILE = path.join(DATA_DIR, 'censo_objetos_v2.json');
+const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 
 // Asegurar directorios
 [DATA_DIR, DEFAULT_EXPORT_DIR].forEach(dir => {
@@ -26,6 +27,14 @@ try {
   console.warn('Advertencia al cargar censo_objetos_v2.json:', e);
 }
 
+function saveCensoToFile() {
+  try {
+    fs.writeFileSync(CENSO_FILE, JSON.stringify(censoData, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Error al guardar censo_objetos_v2.json:', e);
+  }
+}
+
 // Cargar almacenamiento de escaneos
 let scansList = [];
 try {
@@ -41,6 +50,24 @@ function saveScansToFile() {
     fs.writeFileSync(SCANS_FILE, JSON.stringify(scansList, null, 2), 'utf8');
   } catch (e) {
     console.error('Error al guardar scans.json:', e);
+  }
+}
+
+// Cargar almacenamiento de Bitácora de Eventos de Pruebas
+let eventsList = [];
+try {
+  if (fs.existsSync(EVENTS_FILE)) {
+    eventsList = JSON.parse(fs.readFileSync(EVENTS_FILE, 'utf8'));
+  }
+} catch (e) {
+  console.warn('Advertencia al cargar events.json:', e);
+}
+
+function saveEventsToFile() {
+  try {
+    fs.writeFileSync(EVENTS_FILE, JSON.stringify(eventsList, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Error al guardar events.json:', e);
   }
 }
 
@@ -119,12 +146,13 @@ const MIME_TYPES = {
 const server = http.createServer((req, res) => {
   const urlParts = req.url.split('?');
   const pathname = urlParts[0];
+  const queryParams = new URLSearchParams(urlParts[1] || '');
 
-  // Enable CORS
+  // CORS
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type'
     });
     res.end();
@@ -132,12 +160,112 @@ const server = http.createServer((req, res) => {
   }
 
   // ================= API ENDPOINTS =================
+
+  // Catálogo Censo (GET, POST, PUT, DELETE)
   if (pathname === '/api/censo' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(censoData));
     return;
   }
 
+  if (pathname === '/api/censo' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const item = JSON.parse(body);
+        if (!item.codigo) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'El código del objeto es obligatorio' }));
+          return;
+        }
+        const cleanCode = item.codigo.trim().toUpperCase();
+        censoData[cleanCode] = {
+          codigo: cleanCode,
+          tipo: item.tipo || 'OPERATIVA',
+          nombre: item.nombre || 'Nuevo Objeto',
+          corrida: item.corrida || '',
+          composicion: item.composicion || '',
+          notas: item.notas || '',
+          epp: item.epp || 'EPP: nitrilo + gafas · máx. 200 g concentrados',
+          detalles: item.detalles || ''
+        };
+        saveCensoToFile();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ success: true, item: censoData[cleanCode] }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Payload JSON inválido' }));
+      }
+    });
+    return;
+  }
+
+  if (pathname.startsWith('/api/censo/') && req.method === 'DELETE') {
+    const codeToDelete = pathname.replace('/api/censo/', '').toUpperCase();
+    if (censoData[codeToDelete]) {
+      delete censoData[codeToDelete];
+      saveCensoToFile();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ success: true, deleted: codeToDelete }));
+    } else {
+      res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'Objeto no encontrado' }));
+    }
+    return;
+  }
+
+  // Bitácora de Eventos de Ensayos (GET, POST)
+  if (pathname === '/api/events' && req.method === 'GET') {
+    const filterCodigo = queryParams.get('codigo');
+    let filteredEvents = eventsList;
+    if (filterCodigo) {
+      filteredEvents = eventsList.filter(e => String(e.codigo).toUpperCase() === String(filterCodigo).toUpperCase());
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(filteredEvents));
+    return;
+  }
+
+  if (pathname === '/api/events' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body);
+        if (!payload.codigo) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'El código de la muestra es obligatorio' }));
+          return;
+        }
+        const eventEntry = {
+          id: Date.now() + Math.random(),
+          codigo: payload.codigo.trim().toUpperCase(),
+          tipoEvento: payload.tipoEvento || 'Medición de Ensayo',
+          temperatura: payload.temperatura || '',
+          humedad: payload.humedad || '',
+          dureza: payload.dureza || '',
+          resistencia: payload.resistencia || '',
+          observaciones: payload.observaciones || '',
+          estadoEnsayo: payload.estadoEnsayo || 'En Proceso',
+          operador: payload.operador || 'Técnico de Campo',
+          timestamp: Date.now(),
+          date: new Date().toLocaleString()
+        };
+        eventsList.unshift(eventEntry);
+        saveEventsToFile();
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ success: true, event: eventEntry }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Payload JSON inválido' }));
+      }
+    });
+    return;
+  }
+
+  // Escaneos API (GET, POST, DELETE)
   if (pathname === '/api/scans' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(scansList));
@@ -185,7 +313,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Eliminar una lectura por ID especifico: DELETE /api/scans/12345
   if (pathname.startsWith('/api/scans/') && req.method === 'DELETE') {
     const idToDelete = pathname.replace('/api/scans/', '');
     scansList = scansList.filter(s => String(s.id) !== String(idToDelete));
@@ -195,7 +322,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Eliminar todas las lecturas: DELETE /api/scans
   if (pathname === '/api/scans' && req.method === 'DELETE') {
     scansList = [];
     saveScansToFile();
@@ -204,7 +330,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Endpoint de Exportación de Renglones en JSON / YAML a un directorio predefinido
+  // Exportar a JSON / YAML
   if (pathname === '/api/export' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
@@ -212,7 +338,6 @@ const server = http.createServer((req, res) => {
       try {
         const payload = JSON.parse(body);
         const { scanId, items, format = 'json', targetDir } = payload;
-
         const destDir = (targetDir && targetDir.trim()) ? targetDir.trim() : DEFAULT_EXPORT_DIR;
 
         if (!fs.existsSync(destDir)) {
@@ -242,7 +367,11 @@ const server = http.createServer((req, res) => {
           const filename = `${codeLabel}_${item.id || Date.now()}.${isYaml ? 'yaml' : 'json'}`;
           const filePath = path.join(destDir, filename);
 
-          const content = isYaml ? objectToYaml(item) : JSON.stringify(item, null, 2);
+          // Adjuntar eventos de bitácora si existen
+          const itemEvents = eventsList.filter(e => String(e.codigo).toUpperCase() === String(item.codigo).toUpperCase());
+          const fullRecord = { ...item, bitacoraEventos: itemEvents };
+
+          const content = isYaml ? objectToYaml(fullRecord) : JSON.stringify(fullRecord, null, 2);
           fs.writeFileSync(filePath, content, 'utf8');
           exportedFiles.push({ filename, filePath });
         });
@@ -298,6 +427,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor QR Vision Pro listo en puerto ${PORT}`);
+  console.log(`🚀 Servidor QR Vision Pro (Fase 3) listo en puerto ${PORT}`);
   console.log(`📊 Dashboard de Escritorio disponible en: http://localhost:${PORT}/dashboard.html`);
 });

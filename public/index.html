@@ -187,13 +187,63 @@
         </div>
 
         <div class="modal-footer">
+          <button id="add-event-btn" class="btn btn-primary">
+            <i data-lucide="plus-circle"></i> Adosar Evento / Mediciones
+          </button>
           <button id="copy-result-btn" class="btn btn-secondary">
             <i data-lucide="copy"></i> Copiar
           </button>
-          <a id="open-result-btn" href="#" target="_blank" class="btn btn-primary" style="display: none;">
+          <a id="open-result-btn" href="#" target="_blank" class="btn btn-secondary" style="display: none;">
             <i data-lucide="external-link"></i> Abrir Enlace
           </a>
         </div>
+      </div>
+    </div>
+
+    <!-- Modal de Registro de Eventos de Ensayo / Campo -->
+    <div id="event-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Adosar Evento de Prueba</h3>
+          <span id="event-code-display" style="font-weight:700; color: var(--accent-secondary);">Muestra</span>
+        </div>
+        
+        <form id="event-form" class="modal-body" style="display:flex; flex-direction:column; gap:10px;">
+          <div class="input-group">
+            <label>Tipo de Evento / Ensayo</label>
+            <select id="event-type" style="padding:10px; background:rgba(10,15,26,0.8); border:1px solid var(--glass-border); color:#fff; border-radius:8px;">
+              <option value="Medición de Ensayo">Medición de Ensayo</option>
+              <option value="Prueba de Dureza">Prueba de Dureza</option>
+              <option value="Ensayo de Adhesión">Ensayo de Adhesión</option>
+              <option value="Prueba de Descuelgue">Prueba de Descuelgue</option>
+              <option value="Registro de Temp / Humedad">Registro de Temp / Humedad</option>
+              <option value="Observación de Campo">Observación de Campo</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <div class="input-group" style="flex:1;">
+              <label>Temperatura (°C)</label>
+              <input type="text" id="event-temp" placeholder="ej. 23.5">
+            </div>
+            <div class="input-group" style="flex:1;">
+              <label>Dureza / Medición</label>
+              <input type="text" id="event-hardness" placeholder="ej. 65 Shore">
+            </div>
+          </div>
+          <div class="input-group">
+            <label>Observaciones del Técnico</label>
+            <input type="text" id="event-obs" placeholder="ej. Curado a 24h, buena adherencia...">
+          </div>
+          <div class="input-group">
+            <label>Nombre del Técnico / Operador</label>
+            <input type="text" id="event-operator" placeholder="ej. Operador Juan">
+          </div>
+          
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button type="button" id="cancel-event-btn" class="btn btn-secondary flex-1">Cancelar</button>
+            <button type="submit" class="btn btn-gradient flex-1">Guardar Evento</button>
+          </div>
+        </form>
       </div>
     </div>
 
