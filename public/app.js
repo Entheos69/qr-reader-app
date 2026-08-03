@@ -1,7 +1,7 @@
 // App State
 let html5QrCode = null;
 let camerasList = [];
-let selectedCameraId = null;
+let selectedCameraId = localStorage.getItem('preferred_camera_id') || null;
 let scanHistory = JSON.parse(localStorage.getItem('qr_history') || '[]');
 let audioEnabled = true;
 let isScanning = false;
@@ -103,13 +103,20 @@ async function initScanner() {
     if (camerasList && camerasList.length > 0) {
       cameraSelect.innerHTML = '';
       
-      // Buscar la mejor cámara trasera por defecto
-      let defaultIndex = camerasList.findIndex(c => 
-        c.label.toLowerCase().includes('back') || 
-        c.label.toLowerCase().includes('trasera') || 
-        c.label.toLowerCase().includes('environment') ||
-        c.label.toLowerCase().includes('0')
-      );
+      // Buscar si el usuario ya tenía una cámara guardada en localStorage
+      const savedId = localStorage.getItem('preferred_camera_id');
+      let defaultIndex = camerasList.findIndex(c => c.id === savedId);
+
+      // Si no hay guardada, buscar ultra wide / wide / back / 0
+      if (defaultIndex === -1) {
+        defaultIndex = camerasList.findIndex(c => 
+          c.label.toLowerCase().includes('ultra') ||
+          c.label.toLowerCase().includes('wide') ||
+          c.label.toLowerCase().includes('back') || 
+          c.label.toLowerCase().includes('trasera') || 
+          c.label.toLowerCase().includes('environment')
+        );
+      }
       if (defaultIndex === -1) defaultIndex = 0;
 
       camerasList.forEach((cam, idx) => {
@@ -124,6 +131,7 @@ async function initScanner() {
 
       cameraSelect.addEventListener('change', async (e) => {
         selectedCameraId = e.target.value;
+        localStorage.setItem('preferred_camera_id', selectedCameraId);
         await stopScanner();
         startScanner();
       });
