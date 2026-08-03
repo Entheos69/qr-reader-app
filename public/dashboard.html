@@ -317,7 +317,7 @@
 
       <section class="config-card">
         <i data-lucide="folder-output" style="color: var(--accent-secondary);"></i>
-        <label for="target-dir-input" style="font-size: 0.85rem; font-weight: 600;">Directorio de Destino en PC:</label>
+        <label for="target-dir-input" style="font-size: 0.85rem; font-weight: 600;">Directorio de Destino en PC (Servidor Local):</label>
         <input type="text" id="target-dir-input" class="config-input" value="c:\Users\ajmon\proyectos\qr_reader\exports" placeholder="Ruta del directorio...">
       </section>
 
@@ -330,8 +330,9 @@
 
           <div style="display: flex; gap: 8px;">
             <button id="refresh-btn" class="btn btn-secondary"><i data-lucide="refresh-cw"></i> Actualizar</button>
-            <button id="export-all-json-btn" class="btn btn-secondary"><i data-lucide="file-json"></i> JSON</button>
-            <button id="export-all-yaml-btn" class="btn btn-secondary"><i data-lucide="file-code"></i> YAML</button>
+            <button id="export-all-json-btn" class="btn btn-secondary"><i data-lucide="file-json"></i> Exportar Todo JSON</button>
+            <button id="export-all-yaml-btn" class="btn btn-secondary"><i data-lucide="file-code"></i> Exportar Todo YAML</button>
+            <button id="clear-all-scans-btn" class="btn btn-secondary" style="color: var(--accent-danger);"><i data-lucide="trash-2"></i> Limpiar Todo</button>
           </div>
         </div>
 
@@ -343,7 +344,7 @@
               <th>Nombre de Objeto / Fórmula</th>
               <th>Corrida / Formulación</th>
               <th>Fecha / Hora</th>
-              <th style="text-align: right;">Acciones (Exportar / Evento)</th>
+              <th style="text-align: right;">Acciones (Exportar / Eliminar)</th>
             </tr>
           </thead>
           <tbody id="table-body"></tbody>
@@ -414,7 +415,7 @@
         </div>
       </section>
 
-      <!-- ÁREA DE RENDERIZADO DEL PLIEGO IMPRESO (Gemelas en par horizontal) -->
+      <!-- ÁREA DE RENDERIZADO DEL PLIEGO IMPRESO -->
       <section id="print-section" class="print-sheet-area">
         <div id="print-preview-container">
           <p style="text-align: center; color: #666;">Selecciona elementos y presiona "Generar & Imprimir PDF" para armar el pliego.</p>
@@ -438,6 +439,7 @@
       document.getElementById('refresh-btn').addEventListener('click', fetchScans);
       document.getElementById('export-all-json-btn').addEventListener('click', () => exportAll('json'));
       document.getElementById('export-all-yaml-btn').addEventListener('click', () => exportAll('yaml'));
+      document.getElementById('clear-all-scans-btn').addEventListener('click', clearAllScans);
 
       document.getElementById('catalog-form').addEventListener('submit', handleSaveCatalogItem);
       document.getElementById('generate-pdf-btn').addEventListener('click', renderPdfSheetAndPrint);
@@ -524,10 +526,10 @@
             <td><small style="color: var(--text-subtle);">${s.date || new Date(s.timestamp).toLocaleString()}</small></td>
             <td style="text-align: right;">
               <div class="action-row-btns" style="justify-content: flex-end;">
-                <button class="action-btn" onclick="exportRow('${s.id}', 'json')" title="Guardar JSON en PC">
+                <button class="action-btn" onclick="exportRow('${s.id}', 'json')" title="Descargar JSON">
                   <i data-lucide="file-json"></i> JSON
                 </button>
-                <button class="action-btn" onclick="exportRow('${s.id}', 'yaml')" title="Guardar YAML en PC">
+                <button class="action-btn" onclick="exportRow('${s.id}', 'yaml')" title="Descargar YAML">
                   <i data-lucide="file-code"></i> YAML
                 </button>
                 <button class="action-btn delete-btn" onclick="deleteRow('${s.id}')" title="Eliminar este renglón">
@@ -540,6 +542,134 @@
       }).join('');
 
       lucide.createIcons();
+    }
+
+    // Exportar un renglón individual
+    async function exportRow(scanId, format) {
+      const scanItem = allScans.find(s => String(s.id) === String(scanId));
+      if (!scanItem) {
+        alert("No se encontró el elemento.");
+        return;
+      }
+
+      const isYaml = format === 'yaml';
+      const filename = `${scanItem.codigo || 'LECTURA'}_${scanItem.id}.${isYaml ? 'yaml' : 'json'}`;
+
+      // 1. Descarga directa en el navegador de la PC (garantizado en Railway o local)
+      downloadFileInBrowser(scanItem, filename, isYaml);
+
+      // 2. Notificar al backend API
+      const targetDir = document.getElementById('target-dir-input').value;
+      try {
+        await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scanId, format, targetDir })
+        });
+      } catch (e) {
+        console.log("Notificación API export ejecutada.");
+      }
+    }
+
+    // Exportar lote completo
+    async function exportAll(format) {
+      if (allScans.length === 0) {
+        alert("No hay lecturas registradas para exportar.");
+        return;
+      }
+
+      const isYaml = format === 'yaml';
+      const filename = `censo_indupox_lote_completo_${Date.now()}.${isYaml ? 'yaml' : 'json'}`;
+
+      // 1. Descarga directa del lote completo en el navegador
+      downloadFileInBrowser(allScans, filename, isYaml);
+
+      // 2. Notificar al servidor
+      const targetDir = document.getElementById('target-dir-input').value;
+      try {
+        await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: allScans, format, targetDir })
+        });
+      } catch (e) {
+        console.log("Notificación API export batch ejecutada.");
+      }
+    }
+
+    // Disparador de descarga de archivo directo en el navegador
+    function downloadFileInBrowser(data, filename, isYaml) {
+      let textContent = '';
+      if (isYaml) {
+        textContent = objectToYaml(data);
+      } else {
+        textContent = JSON.stringify(data, null, 2);
+      }
+
+      const blob = new Blob([textContent], { type: isYaml ? 'text/yaml;charset=utf-8;' : 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // Convertidor JS a YAML
+    function objectToYaml(obj, indent = 0) {
+      let yaml = '';
+      const padding = ' '.repeat(indent);
+      if (Array.isArray(obj)) {
+        obj.forEach((item, index) => {
+          yaml += `${padding}- # Elemento ${index + 1}\n${objectToYaml(item, indent + 2)}`;
+        });
+        return yaml;
+      }
+      for (const [key, val] of Object.entries(obj)) {
+        if (val === null || val === undefined) continue;
+        if (typeof val === 'object') {
+          yaml += `${padding}${key}:\n${objectToYaml(val, indent + 2)}`;
+        } else {
+          yaml += `${padding}${key}: "${String(val).replace(/"/g, '\\"')}"\n`;
+        }
+      }
+      return yaml;
+    }
+
+    // Eliminar un renglón de lectura
+    async function deleteRow(scanId) {
+      if (!confirm("¿Deseas eliminar este renglón de lectura?")) return;
+
+      try {
+        const res = await fetch(`/api/scans/${scanId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          allScans = allScans.filter(s => String(s.id) !== String(scanId));
+          updateKPIs();
+          renderTable();
+        }
+      } catch (e) {
+        alert("Error al eliminar la lectura.");
+      }
+    }
+
+    // Limpiar todas las lecturas
+    async function clearAllScans() {
+      if (!confirm("¿Estás seguro de borrar TODAS las lecturas del servidor?")) return;
+
+      try {
+        const res = await fetch('/api/scans', { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          allScans = [];
+          updateKPIs();
+          renderTable();
+        }
+      } catch (e) {
+        alert("Error al borrar las lecturas.");
+      }
     }
 
     async function handleSaveCatalogItem(e) {
@@ -636,7 +766,6 @@
 
         container.appendChild(pairDiv);
 
-        // Generar QRs de impresión
         const qrUrl = `https://inducop.mx/r/${item.codigo}`;
         setTimeout(() => {
           new QRCode(document.getElementById(qrId1), { text: qrUrl, width: 64, height: 64 });
@@ -649,54 +778,10 @@
       }, 500);
     }
 
-    async function exportRow(scanId, format) {
-      const targetDir = document.getElementById('target-dir-input').value;
-      try {
-        const res = await fetch('/api/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scanId, format, targetDir })
-        });
-        const data = await res.json();
-        if (data.success) {
-          alert(`¡Exportado! Archivo guardado en:\n${data.targetDir}`);
-        }
-      } catch (e) {
-        alert("Error de conexión al exportar.");
-      }
-    }
-
-    async function exportAll(format) {
-      if (allScans.length === 0) { alert("No hay lecturas para exportar."); return; }
-      const targetDir = document.getElementById('target-dir-input').value;
-      try {
-        const res = await fetch('/api/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: allScans, format, targetDir })
-        });
-        const data = await res.json();
-        if (data.success) alert(`¡Exportación exitosa en:\n${data.targetDir}`);
-      } catch (e) { alert("Error al exportar."); }
-    }
-
-    async function deleteRow(scanId) {
-      if (!confirm("¿Deseas eliminar este renglón de lectura?")) return;
-      try {
-        const res = await fetch(`/api/scans/${scanId}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (data.success) {
-          allScans = allScans.filter(s => String(s.id) !== String(scanId));
-          updateKPIs();
-          renderTable();
-        }
-      } catch (e) { alert("Error al eliminar."); }
-    }
-
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/[&<>"']/g, function(m) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+        return { '&': '&amp;', '<': '&lt;'> '&gt;', '"': '&quot;', "'": '&#039;' }[m];
       });
     }
   </script>
