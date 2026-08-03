@@ -35,6 +35,24 @@ function saveCensoToFile() {
   }
 }
 
+// Cargar almacenamiento de Bitácora de Eventos
+let eventsList = [];
+try {
+  if (fs.existsSync(EVENTS_FILE)) {
+    eventsList = JSON.parse(fs.readFileSync(EVENTS_FILE, 'utf8'));
+  }
+} catch (e) {
+  console.warn('Advertencia al cargar events.json:', e);
+}
+
+function saveEventsToFile() {
+  try {
+    fs.writeFileSync(EVENTS_FILE, JSON.stringify(eventsList, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Error al guardar events.json:', e);
+  }
+}
+
 // Cargar almacenamiento de escaneos
 let scansList = [];
 try {
@@ -53,41 +71,39 @@ function saveScansToFile() {
   }
 }
 
-// Cargar almacenamiento de Bitácora de Eventos de Pruebas
-let eventsList = [];
-try {
-  if (fs.existsSync(EVENTS_FILE)) {
-    eventsList = JSON.parse(fs.readFileSync(EVENTS_FILE, 'utf8'));
+// Enriquecer un escaneo con los datos de bitácora más recientes de ese código
+function enrichScanWithLatestEvent(scan) {
+  if (!scan || !scan.codigo) return scan;
+  const codeUpper = String(scan.codigo).toUpperCase();
+  const latestEvent = eventsList.find(e => String(e.codigo).toUpperCase() === codeUpper);
+  
+  if (latestEvent) {
+    return {
+      ...scan,
+      tipoEvento: latestEvent.tipoEvento || scan.tipoEvento || 'Medición de Ensayo',
+      temperatura: latestEvent.temperatura || scan.temperatura || '',
+      dureza: latestEvent.dureza || scan.dureza || '',
+      observaciones: latestEvent.observaciones || scan.observaciones || '',
+      operador: latestEvent.operador || scan.operador || 'Operador de Campo'
+    };
   }
-} catch (e) {
-  console.warn('Advertencia al cargar events.json:', e);
-}
-
-function saveEventsToFile() {
-  try {
-    fs.writeFileSync(EVENTS_FILE, JSON.stringify(eventsList, null, 2), 'utf8');
-  } catch (e) {
-    console.error('Error al guardar events.json:', e);
-  }
+  return scan;
 }
 
 // Convertidor de Objeto JS a Formato YAML nativo
 function objectToYaml(obj, indent = 0) {
   let yaml = '';
   const padding = ' '.repeat(indent);
+  if (Array.isArray(obj)) {
+    obj.forEach((item, idx) => {
+      yaml += `${padding}- # Lectura ${idx + 1}\n${objectToYaml(item, indent + 2)}`;
+    });
+    return yaml;
+  }
   for (const [key, val] of Object.entries(obj)) {
     if (val === null || val === undefined) continue;
-    if (typeof val === 'object' && !Array.isArray(val)) {
+    if (typeof val === 'object') {
       yaml += `${padding}${key}:\n${objectToYaml(val, indent + 2)}`;
-    } else if (Array.isArray(val)) {
-      yaml += `${padding}${key}:\n`;
-      val.forEach(item => {
-        if (typeof item === 'object') {
-          yaml += `${padding}  -\n${objectToYaml(item, indent + 4)}`;
-        } else {
-          yaml += `${padding}  - "${String(item).replace(/"/g, '\\"')}"\n`;
-        }
-      });
     } else {
       const strVal = String(val).replace(/\n/g, '\\n');
       yaml += `${padding}${key}: "${strVal.replace(/"/g, '\\"')}"\n`;
@@ -161,7 +177,7 @@ const server = http.createServer((req, res) => {
 
   // ================= API ENDPOINTS =================
 
-  // Catálogo Censo (GET, POST, PUT, DELETE)
+  // Catálogo Censo
   if (pathname === '/api/censo' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(censoData));
@@ -201,21 +217,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (pathname.startsWith('/api/censo/') && req.method === 'DELETE') {
-    const codeToDelete = pathname.replace('/api/censo/', '').toUpperCase();
-    if (censoData[codeToDelete]) {
-      delete censoData[codeToDelete];
-      saveCensoToFile();
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ success: true, deleted: codeToDelete }));
-    } else {
-      res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ error: 'Objeto no encontrado' }));
-    }
-    return;
-  }
-
-  // Bitácora de Eventos de Ensayos (GET, POST)
+  // Bitácora de Eventos de Ensayos
   if (pathname === '/api/events' && req.method === 'GET') {
     const filterCodigo = queryParams.get('codigo');
     let filteredEvents = eventsList;
@@ -255,6 +257,22 @@ const server = http.createServer((req, res) => {
         eventsList.unshift(eventEntry);
         saveEventsToFile();
 
+        // Actualizar también los datos del evento en la lista de escaneos correspondientes
+        const codeUpper = eventEntry.codigo;
+        scansList.forEach((scan, idx) => {
+          if (String(scan.codigo).toUpperCase() === codeUpper) {
+            scansList[idx] = {
+              ...scan,
+              tipoEvento: eventEntry.tipoEvento,
+              temperatura: eventEntry.temperatura,
+              dureza: eventEntry.dureza,
+              observaciones: eventEntry.observaciones,
+              operador: eventEntry.operador
+            };
+          }
+        });
+        saveScansToFile();
+
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ success: true, event: eventEntry }));
       } catch (e) {
@@ -265,10 +283,11 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Escaneos API (GET, POST, DELETE)
+  // Escaneos API con fusión automática de bitácora
   if (pathname === '/api/scans' && req.method === 'GET') {
+    const enrichedList = scansList.map(enrichScanWithLatestEvent);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-    res.end(JSON.stringify(scansList));
+    res.end(JSON.stringify(enrichedList));
     return;
   }
 
@@ -293,6 +312,11 @@ const server = http.createServer((req, res) => {
               timestamp: item.timestamp || Date.now(),
               date: item.date || new Date().toLocaleString(),
               dispositivo: item.dispositivo || 'Celular Móvil',
+              tipoEvento: item.tipoEvento || '',
+              temperatura: item.temperatura || '',
+              dureza: item.dureza || '',
+              observaciones: item.observaciones || '',
+              operador: item.operador || '',
               ...charData
             };
             scansList.unshift(entry);
@@ -303,8 +327,9 @@ const server = http.createServer((req, res) => {
         if (scansList.length > 500) scansList = scansList.slice(0, 500);
         saveScansToFile();
 
+        const enrichedList = scansList.map(enrichScanWithLatestEvent);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ success: true, added: addedCount, total: scansList.length }));
+        res.end(JSON.stringify({ success: true, added: addedCount, total: enrichedList.length }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ error: 'Payload JSON inválido' }));
@@ -330,7 +355,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Exportar a JSON / YAML
+  // Exportar a JSON / YAML con campos enriquecidos de bitácora
   if (pathname === '/api/export' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
@@ -363,15 +388,12 @@ const server = http.createServer((req, res) => {
         const isYaml = format.toLowerCase() === 'yaml' || format.toLowerCase() === 'yml';
 
         exportItems.forEach(item => {
-          const codeLabel = item.codigo || 'LECTURA';
-          const filename = `${codeLabel}_${item.id || Date.now()}.${isYaml ? 'yaml' : 'json'}`;
+          const enriched = enrichScanWithLatestEvent(item);
+          const codeLabel = enriched.codigo || 'LECTURA';
+          const filename = `${codeLabel}_${enriched.id || Date.now()}.${isYaml ? 'yaml' : 'json'}`;
           const filePath = path.join(destDir, filename);
 
-          // Adjuntar eventos de bitácora si existen
-          const itemEvents = eventsList.filter(e => String(e.codigo).toUpperCase() === String(item.codigo).toUpperCase());
-          const fullRecord = { ...item, bitacoraEventos: itemEvents };
-
-          const content = isYaml ? objectToYaml(fullRecord) : JSON.stringify(fullRecord, null, 2);
+          const content = isYaml ? objectToYaml(enriched) : JSON.stringify(enriched, null, 2);
           fs.writeFileSync(filePath, content, 'utf8');
           exportedFiles.push({ filename, filePath });
         });
@@ -427,6 +449,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor QR Vision Pro (Fase 3) listo en puerto ${PORT}`);
+  console.log(`🚀 Servidor QR Vision Pro listo en puerto ${PORT}`);
   console.log(`📊 Dashboard de Escritorio disponible en: http://localhost:${PORT}/dashboard.html`);
 });

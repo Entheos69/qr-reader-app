@@ -115,7 +115,7 @@
     }
     .config-input {
       flex: 1;
-      min-width: 300px;
+      min-width: 260px;
       padding: 8px 12px;
       background: rgba(10, 15, 26, 0.8);
       border: 1px solid var(--glass-border);
@@ -191,6 +191,15 @@
     .tag-identidad { background: rgba(16, 185, 129, 0.2); color: var(--accent-success); }
     .tag-condicionada { background: rgba(245, 158, 11, 0.2); color: var(--accent-warning); }
 
+    .event-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent-primary);
+      font-size: 0.75rem;
+    }
+
     .action-row-btns {
       display: flex;
       gap: 6px;
@@ -262,7 +271,7 @@
         <div>
           <h1>INDUPOX · Censo de Objetos Set v2.0</h1>
           <span class="status-badge">
-            <span class="status-dot"></span> <span>Fase 3: Bitácora & Gestor de Corridas</span>
+            <span class="status-dot"></span> <span>Fase 3: Bitácora & Ensayos de Campo</span>
           </span>
         </div>
       </div>
@@ -315,17 +324,21 @@
         </div>
       </section>
 
+      <!-- Selector de Directorio de Destino -->
       <section class="config-card">
         <i data-lucide="folder-output" style="color: var(--accent-secondary);"></i>
-        <label for="target-dir-input" style="font-size: 0.85rem; font-weight: 600;">Directorio de Destino en PC (Servidor Local):</label>
+        <label for="target-dir-input" style="font-size: 0.85rem; font-weight: 600;">Directorio de Destino en PC:</label>
         <input type="text" id="target-dir-input" class="config-input" value="c:\Users\ajmon\proyectos\qr_reader\exports" placeholder="Ruta del directorio...">
+        <button id="pick-dir-btn" class="btn btn-secondary" style="padding: 8px 14px; font-size:0.82rem;">
+          <i data-lucide="folder-open"></i> Elegir Carpeta
+        </button>
       </section>
 
       <section class="table-card">
         <div class="table-toolbar">
           <div class="search-box">
             <i data-lucide="search"></i>
-            <input type="text" id="search-input" placeholder="Buscar código (M04, P05), descripción o fórmula...">
+            <input type="text" id="search-input" placeholder="Buscar código (M04, P05), operador, temperatura, dureza...">
           </div>
 
           <div style="display: flex; gap: 8px;">
@@ -342,7 +355,7 @@
               <th>Código</th>
               <th>Tipo</th>
               <th>Nombre de Objeto / Fórmula</th>
-              <th>Corrida / Formulación</th>
+              <th>Datos de Bitácora (Temp / Dureza / Operador)</th>
               <th>Fecha / Hora</th>
               <th style="text-align: right;">Acciones (Exportar / Eliminar)</th>
             </tr>
@@ -428,6 +441,7 @@
   <script>
     let allScans = [];
     let censoCatalog = {};
+    let selectedDirectoryHandle = null;
 
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
@@ -440,10 +454,25 @@
       document.getElementById('export-all-json-btn').addEventListener('click', () => exportAll('json'));
       document.getElementById('export-all-yaml-btn').addEventListener('click', () => exportAll('yaml'));
       document.getElementById('clear-all-scans-btn').addEventListener('click', clearAllScans);
+      document.getElementById('pick-dir-btn').addEventListener('click', handlePickDirectory);
 
       document.getElementById('catalog-form').addEventListener('submit', handleSaveCatalogItem);
       document.getElementById('generate-pdf-btn').addEventListener('click', renderPdfSheetAndPrint);
     });
+
+    async function handlePickDirectory() {
+      if ('showDirectoryPicker' in window) {
+        try {
+          selectedDirectoryHandle = await window.showDirectoryPicker();
+          document.getElementById('target-dir-input').value = `Carpeta: ${selectedDirectoryHandle.name}`;
+          alert(`Carpeta "${selectedDirectoryHandle.name}" seleccionada. Los archivos JSON/YAML se guardarán directamente aquí.`);
+        } catch (err) {
+          console.log("Selección de carpeta cancelada");
+        }
+      } else {
+        alert("Tu navegador no soporta el selector nativo de carpetas. Los archivos se descargarán mediante el gestor de descargas.");
+      }
+    }
 
     function initNavTabs() {
       const btns = document.querySelectorAll('.main-nav-btn');
@@ -498,7 +527,7 @@
       const query = (document.getElementById('search-input').value || '').toLowerCase().trim();
 
       const filtered = allScans.filter(s => {
-        const textToSearch = `${s.codigo} ${s.nombre} ${s.composicion} ${s.tipo} ${s.raw}`.toLowerCase();
+        const textToSearch = `${s.codigo} ${s.nombre} ${s.composicion} ${s.tipo} ${s.temperatura} ${s.dureza} ${s.observaciones} ${s.operador} ${s.raw}`.toLowerCase();
         return !query || textToSearch.includes(query);
       });
 
@@ -512,24 +541,33 @@
         if (s.tipo && s.tipo.includes('OPERATIVA')) tagClass = 'tag-operativa';
         if (s.tipo && s.tipo.includes('IDENTIDAD')) tagClass = 'tag-identidad';
 
+        const hasEvent = s.temperatura || s.dureza || s.observaciones || s.operador;
+
         return `
           <tr>
             <td><strong style="color: #fff; font-family: var(--font-heading); font-size: 1rem;">${s.codigo || '—'}</strong></td>
             <td><span class="tag-type ${tagClass}">${s.tipo || 'DESCONOCIDO'}</span></td>
             <td>
               <div style="font-weight: 600; color: #fff;">${escapeHtml(s.nombre || s.raw)}</div>
+              <small style="color: var(--text-muted);">${escapeHtml(s.composicion || s.detalles || '')}</small>
             </td>
             <td>
-              <div style="font-size: 0.83rem;">${escapeHtml(s.composicion || s.detalles || '—')}</div>
-              ${s.corrida ? `<small style="color: var(--accent-secondary);">${escapeHtml(s.corrida)}</small>` : ''}
+              ${hasEvent ? `
+                <div style="font-size: 0.82rem; color: #fff;">
+                  ${s.temperatura ? `<span>🌡️ <strong>${escapeHtml(s.temperatura)}°C</strong></span> ` : ''}
+                  ${s.dureza ? `<span>🧪 <strong>${escapeHtml(s.dureza)}</strong></span>` : ''}
+                </div>
+                ${s.observaciones ? `<div style="font-size: 0.78rem; color: var(--text-muted);">💬 ${escapeHtml(s.observaciones)}</div>` : ''}
+                ${s.operador ? `<small style="color: var(--accent-primary);">👤 ${escapeHtml(s.operador)}</small>` : ''}
+              ` : `<span style="color: var(--text-subtle); font-size:0.8rem;">Sin mediciones de bitácora</span>`}
             </td>
             <td><small style="color: var(--text-subtle);">${s.date || new Date(s.timestamp).toLocaleString()}</small></td>
             <td style="text-align: right;">
               <div class="action-row-btns" style="justify-content: flex-end;">
-                <button class="action-btn" onclick="exportRow('${s.id}', 'json')" title="Descargar JSON">
+                <button class="action-btn" onclick="exportRow('${s.id}', 'json')" title="Guardar JSON">
                   <i data-lucide="file-json"></i> JSON
                 </button>
-                <button class="action-btn" onclick="exportRow('${s.id}', 'yaml')" title="Descargar YAML">
+                <button class="action-btn" onclick="exportRow('${s.id}', 'yaml')" title="Guardar YAML">
                   <i data-lucide="file-code"></i> YAML
                 </button>
                 <button class="action-btn delete-btn" onclick="deleteRow('${s.id}')" title="Eliminar este renglón">
@@ -544,34 +582,21 @@
       lucide.createIcons();
     }
 
-    // Exportar un renglón individual
+    // Exportar un renglón individual con todos los campos de bitácora
     async function exportRow(scanId, format) {
       const scanItem = allScans.find(s => String(s.id) === String(scanId));
-      if (!scanItem) {
-        alert("No se encontró el elemento.");
-        return;
-      }
+      if (!scanItem) return;
 
       const isYaml = format === 'yaml';
       const filename = `${scanItem.codigo || 'LECTURA'}_${scanItem.id}.${isYaml ? 'yaml' : 'json'}`;
 
-      // 1. Descarga directa en el navegador de la PC (garantizado en Railway o local)
-      downloadFileInBrowser(scanItem, filename, isYaml);
+      // Estructura completa incluyendo mediciones de campo
+      const cleanData = buildFullRecordObject(scanItem);
 
-      // 2. Notificar al backend API
-      const targetDir = document.getElementById('target-dir-input').value;
-      try {
-        await fetch('/api/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scanId, format, targetDir })
-        });
-      } catch (e) {
-        console.log("Notificación API export ejecutada.");
-      }
+      await saveToDestinationFolderOrBrowser(cleanData, filename, isYaml);
     }
 
-    // Exportar lote completo
+    // Exportar lote completo con todos los campos de bitácora
     async function exportAll(format) {
       if (allScans.length === 0) {
         alert("No hay lecturas registradas para exportar.");
@@ -581,31 +606,66 @@
       const isYaml = format === 'yaml';
       const filename = `censo_indupox_lote_completo_${Date.now()}.${isYaml ? 'yaml' : 'json'}`;
 
-      // 1. Descarga directa del lote completo en el navegador
-      downloadFileInBrowser(allScans, filename, isYaml);
+      const fullDataset = allScans.map(buildFullRecordObject);
+      await saveToDestinationFolderOrBrowser(fullDataset, filename, isYaml);
+    }
 
-      // 2. Notificar al servidor
+    function buildFullRecordObject(s) {
+      return {
+        id: String(s.id),
+        timestamp: String(s.timestamp),
+        date: s.date || '',
+        dispositivo: s.dispositivo || 'Celular Móvil',
+        caracterizado: s.caracterizado ? "true" : "false",
+        codigo: s.codigo || '',
+        tipo: s.tipo || '',
+        nombre: s.nombre || '',
+        corrida: s.corrida || '',
+        composicion: s.composicion || '',
+        notas: s.notas || '',
+        epp: s.epp || '',
+        detalles: s.detalles || '',
+        tipoEvento: s.tipoEvento || '',
+        temperatura: s.temperatura || '',
+        dureza: s.dureza || '',
+        observaciones: s.observaciones || '',
+        operador: s.operador || '',
+        raw: s.raw || ''
+      };
+    }
+
+    async function saveToDestinationFolderOrBrowser(data, filename, isYaml) {
+      const textContent = isYaml ? objectToYaml(data) : JSON.stringify(data, null, 2);
+
+      // Si el usuario eligió una carpeta nativa con File System Access API
+      if (selectedDirectoryHandle) {
+        try {
+          const fileHandle = await selectedDirectoryHandle.getFileHandle(filename, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(textContent);
+          await writable.close();
+          alert(`¡Archivo ${filename} guardado directamente en la carpeta "${selectedDirectoryHandle.name}"!`);
+          return;
+        } catch (err) {
+          console.warn("Fallo al escribir en carpeta elegida, usando descarga del navegador:", err);
+        }
+      }
+
+      // Descarga directa en el navegador
+      downloadFileInBrowser(textContent, filename, isYaml);
+
+      // Notificar al servidor en segundo plano
       const targetDir = document.getElementById('target-dir-input').value;
       try {
         await fetch('/api/export', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: allScans, format, targetDir })
+          body: JSON.stringify({ items: Array.isArray(data) ? data : [data], format: isYaml ? 'yaml' : 'json', targetDir })
         });
-      } catch (e) {
-        console.log("Notificación API export batch ejecutada.");
-      }
+      } catch (e) {}
     }
 
-    // Disparador de descarga de archivo directo en el navegador
-    function downloadFileInBrowser(data, filename, isYaml) {
-      let textContent = '';
-      if (isYaml) {
-        textContent = objectToYaml(data);
-      } else {
-        textContent = JSON.stringify(data, null, 2);
-      }
-
+    function downloadFileInBrowser(textContent, filename, isYaml) {
       const blob = new Blob([textContent], { type: isYaml ? 'text/yaml;charset=utf-8;' : 'application/json;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -617,13 +677,12 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    // Convertidor JS a YAML
     function objectToYaml(obj, indent = 0) {
       let yaml = '';
       const padding = ' '.repeat(indent);
       if (Array.isArray(obj)) {
         obj.forEach((item, index) => {
-          yaml += `${padding}- # Elemento ${index + 1}\n${objectToYaml(item, indent + 2)}`;
+          yaml += `${padding}- # Lectura ${index + 1}\n${objectToYaml(item, indent + 2)}`;
         });
         return yaml;
       }
@@ -632,16 +691,15 @@
         if (typeof val === 'object') {
           yaml += `${padding}${key}:\n${objectToYaml(val, indent + 2)}`;
         } else {
-          yaml += `${padding}${key}: "${String(val).replace(/"/g, '\\"')}"\n`;
+          const strVal = String(val).replace(/\n/g, '\\n');
+          yaml += `${padding}${key}: "${strVal.replace(/"/g, '\\"')}"\n`;
         }
       }
       return yaml;
     }
 
-    // Eliminar un renglón de lectura
     async function deleteRow(scanId) {
       if (!confirm("¿Deseas eliminar este renglón de lectura?")) return;
-
       try {
         const res = await fetch(`/api/scans/${scanId}`, { method: 'DELETE' });
         const data = await res.json();
@@ -650,15 +708,11 @@
           updateKPIs();
           renderTable();
         }
-      } catch (e) {
-        alert("Error al eliminar la lectura.");
-      }
+      } catch (e) { alert("Error al eliminar."); }
     }
 
-    // Limpiar todas las lecturas
     async function clearAllScans() {
       if (!confirm("¿Estás seguro de borrar TODAS las lecturas del servidor?")) return;
-
       try {
         const res = await fetch('/api/scans', { method: 'DELETE' });
         const data = await res.json();
@@ -667,9 +721,7 @@
           updateKPIs();
           renderTable();
         }
-      } catch (e) {
-        alert("Error al borrar las lecturas.");
-      }
+      } catch (e) { alert("Error al borrar."); }
     }
 
     async function handleSaveCatalogItem(e) {
@@ -696,20 +748,16 @@
           fetchCatalog();
           document.getElementById('catalog-form').reset();
         }
-      } catch (err) {
-        alert("Error al guardar en el catálogo.");
-      }
+      } catch (err) { alert("Error al guardar en el catálogo."); }
     }
 
     function populatePrintSelector() {
       const grid = document.getElementById('print-selector-grid');
       const keys = Object.keys(censoCatalog);
-
       if (keys.length === 0) {
         grid.innerHTML = '<p style="color:var(--text-muted);">No hay objetos en el catálogo para imprimir.</p>';
         return;
       }
-
       grid.innerHTML = keys.map(k => {
         const item = censoCatalog[k];
         return `
@@ -733,15 +781,12 @@
 
       checkedCodes.forEach(code => {
         const item = censoCatalog[code] || { codigo: code, nombre: 'Objeto ' + code, composicion: '' };
-        
         const pairDiv = document.createElement('div');
         pairDiv.className = 'pdf-label-pair';
-
         const qrId1 = `qr-print-${code}-1`;
         const qrId2 = `qr-print-${code}-2`;
 
         pairDiv.innerHTML = `
-          <!-- Etiqueta 1 (Objeto) -->
           <div class="pdf-label">
             <div>
               <div class="code-title">${item.codigo}</div>
@@ -751,8 +796,6 @@
             <div style="font-size:0.75rem; margin-top:10px;">${escapeHtml(item.epp || '')}</div>
             <div class="qr-corner" id="${qrId1}"></div>
           </div>
-
-          <!-- Etiqueta 2 (Cuaderno - Gemela) -->
           <div class="pdf-label">
             <div>
               <div class="code-title">${item.codigo}</div>
@@ -763,7 +806,6 @@
             <div class="qr-corner" id="${qrId2}"></div>
           </div>
         `;
-
         container.appendChild(pairDiv);
 
         const qrUrl = `https://inducop.mx/r/${item.codigo}`;
@@ -773,15 +815,13 @@
         }, 50);
       });
 
-      setTimeout(() => {
-        window.print();
-      }, 500);
+      setTimeout(() => { window.print(); }, 500);
     }
 
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/[&<>"']/g, function(m) {
-        return { '&': '&amp;', '<': '&lt;'> '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
       });
     }
   </script>
