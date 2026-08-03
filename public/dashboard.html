@@ -21,12 +21,12 @@
     }
     .desktop-container {
       width: 100%;
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
       padding: 24px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 20px;
     }
     .dashboard-header {
       display: flex;
@@ -34,27 +34,29 @@
       align-items: center;
       background: var(--bg-card);
       border: 1px solid var(--glass-border);
-      padding: 20px 28px;
+      padding: 18px 24px;
       border-radius: var(--radius-lg);
       backdrop-filter: blur(16px);
+      flex-wrap: wrap;
+      gap: 16px;
     }
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 16px;
     }
     .kpi-card {
       background: var(--bg-card);
       border: 1px solid var(--glass-border);
       border-radius: var(--radius-md);
-      padding: 20px;
+      padding: 18px;
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
     }
     .kpi-icon {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       border-radius: var(--radius-md);
       display: flex;
       align-items: center;
@@ -63,25 +65,46 @@
     }
     .kpi-val {
       font-family: var(--font-heading);
-      font-size: 1.8rem;
+      font-size: 1.7rem;
       font-weight: 700;
     }
     .kpi-label {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
+    }
+    .config-card {
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .config-input {
+      flex: 1;
+      min-width: 300px;
+      padding: 8px 12px;
+      background: rgba(10, 15, 26, 0.8);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
     }
     .table-card {
       background: var(--bg-card);
       border: 1px solid var(--glass-border);
       border-radius: var(--radius-lg);
-      padding: 24px;
+      padding: 20px;
     }
     .table-toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       flex-wrap: wrap;
     }
     .search-box {
@@ -96,7 +119,7 @@
       border: 1px solid var(--glass-border);
       border-radius: var(--radius-md);
       color: #fff;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
     }
     .search-box i {
       position: absolute;
@@ -105,15 +128,15 @@
     }
     .filter-pills {
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
     .pill {
-      padding: 8px 14px;
+      padding: 6px 12px;
       border-radius: var(--radius-full);
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid var(--glass-border);
       color: var(--text-muted);
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       cursor: pointer;
     }
     .pill.active {
@@ -123,18 +146,18 @@
     .data-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
     }
     .data-table th {
       text-align: left;
-      padding: 12px 16px;
+      padding: 12px 14px;
       background: rgba(10, 15, 26, 0.7);
       color: var(--text-muted);
       font-weight: 600;
       border-bottom: 1px solid var(--glass-border);
     }
     .data-table td {
-      padding: 14px 16px;
+      padding: 12px 14px;
       border-bottom: 1px solid var(--glass-border);
       vertical-align: middle;
     }
@@ -143,15 +166,43 @@
     }
     .tag-type {
       display: inline-block;
-      padding: 3px 10px;
+      padding: 3px 8px;
       border-radius: var(--radius-full);
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 600;
     }
     .tag-operativa { background: rgba(6, 182, 212, 0.2); color: var(--accent-secondary); }
     .tag-identidad { background: rgba(16, 185, 129, 0.2); color: var(--accent-success); }
     .tag-condicionada { background: rgba(245, 158, 11, 0.2); color: var(--accent-warning); }
     .tag-otro { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
+    
+    .action-row-btns {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .action-btn {
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      cursor: pointer;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .action-btn.delete-btn {
+      color: var(--accent-danger);
+      background: rgba(239, 68, 68, 0.1);
+    }
+    .action-btn.delete-btn:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
   </style>
 </head>
 <body>
@@ -171,12 +222,18 @@
         </div>
       </div>
       
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button id="refresh-btn" class="btn btn-secondary">
           <i data-lucide="refresh-cw"></i> Actualizar
         </button>
-        <button id="export-csv-btn" class="btn btn-primary">
-          <i data-lucide="download"></i> Exportar CSV
+        <button id="export-all-json-btn" class="btn btn-secondary">
+          <i data-lucide="file-json"></i> Exportar Todo JSON
+        </button>
+        <button id="export-all-yaml-btn" class="btn btn-secondary">
+          <i data-lucide="file-code"></i> Exportar Todo YAML
+        </button>
+        <button id="clear-all-scans-btn" class="btn btn-secondary" style="color: var(--accent-danger);">
+          <i data-lucide="trash-2"></i> Limpiar Todo
         </button>
       </div>
     </header>
@@ -214,6 +271,14 @@
       </div>
     </section>
 
+    <!-- Configuración del Directorio de Exportación en PC -->
+    <section class="config-card">
+      <i data-lucide="folder-output" style="color: var(--accent-secondary);"></i>
+      <label for="target-dir-input" style="font-size: 0.85rem; font-weight: 600; white-space: nowrap;">Directorio de Destino en PC:</label>
+      <input type="text" id="target-dir-input" class="config-input" value="c:\Users\ajmon\proyectos\qr_reader\exports" placeholder="Ruta del directorio...">
+      <small style="color: var(--text-muted); font-size: 0.78rem;">Archivos JSON/YAML se guardarán directamente en este directorio de tu disco.</small>
+    </section>
+
     <!-- Tabla Principal de Consulta -->
     <section class="table-card">
       <div class="table-toolbar">
@@ -237,8 +302,8 @@
               <th>Tipo</th>
               <th>Nombre de Objeto / Fórmula</th>
               <th>Corrida / Formulación</th>
-              <th>EPP & Seguridad</th>
               <th>Fecha / Hora</th>
+              <th style="text-align: right;">Acciones (Exportar / Eliminar)</th>
             </tr>
           </thead>
           <tbody id="table-body">
@@ -257,10 +322,12 @@
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       fetchScans();
-      setInterval(fetchScans, 4000); // Polling automático cada 4 segundos
+      setInterval(fetchScans, 4000);
 
       document.getElementById('refresh-btn').addEventListener('click', fetchScans);
-      document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
+      document.getElementById('export-all-json-btn').addEventListener('click', () => exportAll('json'));
+      document.getElementById('export-all-yaml-btn').addEventListener('click', () => exportAll('yaml'));
+      document.getElementById('clear-all-scans-btn').addEventListener('click', clearAllScans);
 
       document.getElementById('search-input').addEventListener('input', renderTable);
 
@@ -306,7 +373,7 @@
       });
 
       if (filtered.length === 0) {
-        body.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No hay lecturas registradas aún. Abre la app en el celular y presiona "Sincronizar".</td></tr>`;
+        body.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No hay lecturas registradas aún. Presiona "Sincronizar" en el celular o realiza una lectura.</td></tr>`;
         return;
       }
 
@@ -328,30 +395,140 @@
               <div style="font-size: 0.83rem;">${escapeHtml(s.composicion || s.detalles || '—')}</div>
               ${s.corrida ? `<small style="color: var(--accent-secondary);">${escapeHtml(s.corrida)}</small>` : ''}
             </td>
-            <td><small style="color: var(--text-muted);">${escapeHtml(s.epp || '—')}</small></td>
             <td><small style="color: var(--text-subtle);">${s.date || new Date(s.timestamp).toLocaleString()}</small></td>
+            <td style="text-align: right;">
+              <div class="action-row-btns" style="justify-content: flex-end;">
+                <button class="action-btn" onclick="exportRow('${s.id}', 'json')" title="Guardar JSON en PC">
+                  <i data-lucide="file-json"></i> JSON
+                </button>
+                <button class="action-btn" onclick="exportRow('${s.id}', 'yaml')" title="Guardar YAML en PC">
+                  <i data-lucide="file-code"></i> YAML
+                </button>
+                <button class="action-btn delete-btn" onclick="deleteRow('${s.id}')" title="Eliminar este renglón">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
+            </td>
           </tr>
         `;
       }).join('');
+
+      lucide.createIcons();
     }
 
-    function exportCSV() {
+    // Exportar un renglón individual a JSON o YAML
+    async function exportRow(scanId, format) {
+      const targetDir = document.getElementById('target-dir-input').value;
+      const scanItem = allScans.find(s => String(s.id) === String(scanId));
+
+      try {
+        const res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scanId, format, targetDir })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          // Descargar también copia local en el navegador
+          downloadBrowserFile(scanItem, format);
+          alert(`¡Exportado! Archivo ${data.files[0].filename} guardado en:\n${data.targetDir}`);
+        } else {
+          alert("Error: " + (data.error || "No se pudo exportar"));
+        }
+      } catch (e) {
+        alert("Error de conexión al exportar: " + e.message);
+      }
+    }
+
+    // Exportar todo
+    async function exportAll(format) {
       if (allScans.length === 0) {
-        alert("No hay datos para exportar.");
+        alert("No hay lecturas para exportar.");
         return;
       }
+      const targetDir = document.getElementById('target-dir-input').value;
 
-      let csv = "ID,Codigo,Tipo,Nombre,Corrida,Composicion,EPP,Fecha,Raw\n";
-      allScans.forEach(s => {
-        csv += `"${s.id}","${s.codigo || ''}","${s.tipo || ''}","${(s.nombre || '').replace(/"/g, '""')}","${s.corrida || ''}","${(s.composicion || '').replace(/"/g, '""')}","${(s.epp || '').replace(/"/g, '""')}","${s.date || ''}","${(s.raw || '').replace(/"/g, '""')}"\n`;
-      });
+      try {
+        const res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: allScans, format, targetDir })
+        });
+        const data = await res.json();
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        if (data.success) {
+          alert(`¡Exportación masiva exitosa! ${data.count} archivos guardados en:\n${data.targetDir}`);
+        }
+      } catch (e) {
+        alert("Error al exportar: " + e.message);
+      }
+    }
+
+    // Eliminar un renglón
+    async function deleteRow(scanId) {
+      if (!confirm("¿Deseas eliminar este renglón de lectura?")) return;
+
+      try {
+        const res = await fetch(`/api/scans/${scanId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          allScans = allScans.filter(s => String(s.id) !== String(scanId));
+          updateKPIs();
+          renderTable();
+        }
+      } catch (e) {
+        alert("Error al eliminar la lectura.");
+      }
+    }
+
+    // Limpiar todas las lecturas
+    async function clearAllScans() {
+      if (!confirm("¿Estás seguro de borrar TODAS las lecturas del servidor?")) return;
+
+      try {
+        const res = await fetch('/api/scans', { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          allScans = [];
+          updateKPIs();
+          renderTable();
+        }
+      } catch (e) {
+        alert("Error al borrar las lecturas.");
+      }
+    }
+
+    function downloadBrowserFile(item, format) {
+      const isYaml = format === 'yaml';
+      let content = '';
+
+      if (isYaml) {
+        content = objectToYaml(item);
+      } else {
+        content = JSON.stringify(item, null, 2);
+      }
+
+      const blob = new Blob([content], { type: isYaml ? 'text/yaml;charset=utf-8;' : 'application/json;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `censo_indupox_lecturas_${Date.now()}.csv`;
+      a.download = `${item.codigo || 'LECTURA'}_${item.id}.${isYaml ? 'yaml' : 'json'}`;
       a.click();
+    }
+
+    function objectToYaml(obj, indent = 0) {
+      let yaml = '';
+      const padding = ' '.repeat(indent);
+      for (const [key, val] of Object.entries(obj)) {
+        if (val === null || val === undefined) continue;
+        if (typeof val === 'object' && !Array.isArray(val)) {
+          yaml += `${padding}${key}:\n${objectToYaml(val, indent + 2)}`;
+        } else {
+          yaml += `${padding}${key}: "${String(val).replace(/"/g, '\\"')}"\n`;
+        }
+      }
+      return yaml;
     }
 
     function escapeHtml(str) {
