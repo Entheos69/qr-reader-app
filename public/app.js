@@ -1,11 +1,24 @@
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(() => {
+      console.log('[PWA] Service Worker registrado');
+    }).catch(err => {
+      console.warn('[PWA] Fallo en registro de SW:', err);
+    });
+  });
+}
+
 // App State
 let html5QrCode = null;
 let camerasList = [];
 let selectedCameraId = localStorage.getItem('preferred_camera_id') || null;
 let scanHistory = JSON.parse(localStorage.getItem('qr_history') || '[]');
+let offlineQueue = JSON.parse(localStorage.getItem('qr_offline_queue') || '[]');
 let audioEnabled = true;
 let isScanning = false;
 let currentScannedCode = null;
+let torchActive = false;
 
 // Web Audio API Beep Generator
 function playBeepSound() {
@@ -37,10 +50,62 @@ function triggerVibration() {
   }
 }
 
+// Network Status & Offline Synchronization
+function initNetworkStatus() {
+  const badge = document.getElementById('network-badge');
+  if (!badge) return;
+
+  function updateStatus() {
+    if (navigator.onLine) {
+      badge.className = 'badge-online';
+      badge.innerText = 'Online';
+      syncOfflineQueue();
+    } else {
+      badge.className = 'badge-offline';
+      badge.innerText = 'Offline';
+    }
+  }
+
+  window.addEventListener('online', updateStatus);
+  window.addEventListener('offline', updateStatus);
+  updateStatus();
+}
+
+// Queue offline scans/events
+function addToOfflineQueue(type, payload) {
+  offlineQueue.push({ type, payload, timestamp: Date.now() });
+  localStorage.setItem('qr_offline_queue', JSON.stringify(offlineQueue));
+}
+
+async function syncOfflineQueue() {
+  if (offlineQueue.length === 0 || !navigator.onLine) return;
+
+  console.log(`[Offline Sync] Procesando ${offlineQueue.length} elementos pendientes...`);
+  const queueToSync = [...offlineQueue];
+  offlineQueue = [];
+  localStorage.setItem('qr_offline_queue', JSON.stringify(offlineQueue));
+
+  for (const item of queueToSync) {
+    try {
+      const endpoint = item.type === 'event' ? '/api/events' : '/api/scans';
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item.payload)
+      });
+    } catch (e) {
+      console.warn("Fallo al reenviar elemento offline, reencolando:", e);
+      offlineQueue.push(item);
+      localStorage.setItem('qr_offline_queue', JSON.stringify(offlineQueue));
+    }
+  }
+}
+
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   
+  initNetworkStatus();
   initTabs();
   initAudioToggle();
   initHistory();
@@ -50,10 +115,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initModal();
   initSyncWithPC();
   initEventLogging();
+  initPreAnalysisListeners();
 });
 
 // Transmitir escaneos al Servidor Central PC
 async function sendScanToServer(scanData) {
+  if (!navigator.onLine) {
+    addToOfflineQueue('scan', scanData);
+    return;
+  }
   try {
     await fetch('/api/scans', {
       method: 'POST',
@@ -61,7 +131,8 @@ async function sendScanToServer(scanData) {
       body: JSON.stringify(scanData)
     });
   } catch (e) {
-    console.warn("No se pudo transmitir el escaneo al servidor PC:", e);
+    console.warn("No se pudo transmitir el escaneo al servidor PC, guardando offline:", e);
+    addToOfflineQueue('scan', scanData);
   }
 }
 
@@ -71,8 +142,8 @@ function initSyncWithPC() {
   if (!syncBtn) return;
 
   syncBtn.addEventListener('click', async () => {
-    if (scanHistory.length === 0) {
-      alert("No hay lecturas en el celular para sincronizar.");
+    if (scanHistory.length === 0 && offlineQueue.length === 0) {
+      alert("No hay lecturas en la cola para sincronizar.");
       return;
     }
 
@@ -80,20 +151,54 @@ function initSyncWithPC() {
     lucide.createIcons();
 
     try {
+      await syncOfflineQueue();
       const res = await fetch('/api/scans', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(scanHistory)
       });
       const data = await res.json();
-      alert(`¡Sincronización Exitosa! ${data.added || 0} lecturas enviadas al escritorio de tu PC.`);
+      alert(`¡Sincronización Exitosa! ${data.added || 0} lecturas procesadas en el servidor.`);
     } catch (e) {
-      alert("Error al conectar con la PC. Asegúrate de tener conexión a internet.");
+      alert("Operando en modo offline o sin respuesta del servidor.");
     } finally {
-      syncBtn.innerHTML = `<i data-lucide="refresh-cw"></i> Sincronizar Historial con PC`;
+      syncBtn.innerHTML = `<i data-lucide="refresh-cw"></i> Sincronizar Cola Offline / Servidor`;
       lucide.createIcons();
     }
   });
+}
+
+// Pre-Análisis en Tiempo Real en el Formulario de Captura
+function initPreAnalysisListeners() {
+  const tempInput = document.getElementById('event-temp');
+  const hardnessInput = document.getElementById('event-hardness');
+  const banner = document.getElementById('pre-analysis-banner');
+  const msgSpan = document.getElementById('pre-analysis-msg');
+
+  if (!tempInput || !hardnessInput || !banner) return;
+
+  function evaluateQuality() {
+    const warnings = [];
+    const tVal = parseFloat(tempInput.value.replace(/[^0-9.-]/g, ''));
+    if (!isNaN(tVal) && (tVal < 10 || tVal > 50)) {
+      warnings.push(`Temperatura fuera de rango (${tVal}°C vs 10-50°C)`);
+    }
+
+    const hVal = parseFloat(hardnessInput.value.replace(/[^0-9.-]/g, ''));
+    if (!isNaN(hVal) && (hVal < 0 || hVal > 100)) {
+      warnings.push(`Dureza fuera de rango (${hVal} vs 0-100 Shore)`);
+    }
+
+    if (warnings.length > 0) {
+      banner.style.display = 'block';
+      msgSpan.innerText = ' ⚠️ Pre-Análisis: ' + warnings.join(' | ');
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  tempInput.addEventListener('input', evaluateQuality);
+  hardnessInput.addEventListener('input', evaluateQuality);
 }
 
 // Registro de Eventos y Mediciones de Ensayos desde el Celular
@@ -127,6 +232,14 @@ function initEventLogging() {
         operador: document.getElementById('event-operator').value || 'Operador de Campo'
       };
 
+      if (!navigator.onLine) {
+        addToOfflineQueue('event', payload);
+        alert(`¡Evento guardado offline en el celular! Se sincronizará automáticamente al recuperar red.`);
+        document.getElementById('event-modal').style.display = 'none';
+        eventForm.reset();
+        return;
+      }
+
       try {
         const res = await fetch('/api/events', {
           method: 'POST',
@@ -135,12 +248,16 @@ function initEventLogging() {
         });
         const data = await res.json();
         if (data.success) {
-          alert(`¡Evento de Ensayo registrado para ${currentScannedCode}! Sincronizado con la PC.`);
+          const advText = data.preAnalisis?.advertencias ? `\n\n⚠️ Aviso Pre-Análisis: ${data.preAnalisis.advertencias}` : '';
+          alert(`¡Evento de Ensayo registrado para ${currentScannedCode}!${advText}`);
           document.getElementById('event-modal').style.display = 'none';
           eventForm.reset();
         }
       } catch (err) {
-        alert("Error al registrar el evento de prueba.");
+        addToOfflineQueue('event', payload);
+        alert("Sin respuesta del servidor. Registro almacenado en cola offline.");
+        document.getElementById('event-modal').style.display = 'none';
+        eventForm.reset();
       }
     });
   }
@@ -238,11 +355,49 @@ async function initScanner() {
     cameraSelect.innerHTML = '<option value="">Cámara del sistema</option>';
   }
 
+  initTorch();
   startScanner();
 
   document.getElementById('restart-scan-btn').addEventListener('click', () => {
     document.getElementById('restart-scan-btn').style.display = 'none';
     startScanner();
+  });
+}
+
+function initTorch() {
+  const torchBtn = document.getElementById('toggle-torch-btn');
+  if (!torchBtn) return;
+
+  torchBtn.style.display = 'inline-flex';
+  torchBtn.addEventListener('click', async () => {
+    try {
+      if (html5QrCode && isScanning) {
+        // Consultar pistas activas del scanner de video
+        const videoElement = document.querySelector('#reader video');
+        if (videoElement && videoElement.srcObject) {
+          const track = videoElement.srcObject.getVideoTracks()[0];
+          if (track) {
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+            if (capabilities.torch || 'torch' in track.getConstraints()) {
+              torchActive = !torchActive;
+              await track.applyConstraints({ advanced: [{ torch: torchActive }] });
+              if (torchActive) {
+                torchBtn.classList.add('btn-torch-active');
+                document.getElementById('torch-label').innerText = 'Linterna ON';
+              } else {
+                torchBtn.classList.remove('btn-torch-active');
+                document.getElementById('torch-label').innerText = 'Linterna OFF';
+              }
+              return;
+            }
+          }
+        }
+      }
+      alert("La linterna no está disponible en esta cámara o navegador.");
+    } catch (e) {
+      console.warn("Error al activar linterna:", e);
+      alert("No se pudo alternar la linterna.");
+    }
   });
 }
 

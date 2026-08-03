@@ -2,6 +2,14 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+// Módulo nativo SQLite en Node >= 22 (con fallback seguro en memoria si no está activo)
+let DatabaseSync;
+try {
+  DatabaseSync = require('node:sqlite').DatabaseSync;
+} catch (e) {
+  console.warn('node:sqlite no disponible, usando fallback en memoria/JSON:', e.message);
+}
+
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -9,6 +17,7 @@ const DEFAULT_EXPORT_DIR = path.join(__dirname, 'exports');
 const SCANS_FILE = path.join(DATA_DIR, 'scans.json');
 const CENSO_FILE = path.join(DATA_DIR, 'censo_objetos_v2.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
+const DB_FILE = path.join(DATA_DIR, 'qr_vision.db');
 
 // Asegurar directorios
 [DATA_DIR, DEFAULT_EXPORT_DIR].forEach(dir => {
@@ -16,6 +25,76 @@ const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
     fs.mkdirSync(dir, { recursive: true });
   }
 });
+
+// Inicialización de SQLite
+let db = null;
+if (DatabaseSync) {
+  try {
+    db = new DatabaseSync(DB_FILE);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS censo (
+        codigo TEXT PRIMARY KEY,
+        tipo TEXT,
+        nombre TEXT,
+        corrida TEXT,
+        composicion TEXT,
+        notas TEXT,
+        epp TEXT,
+        detalles TEXT
+      );
+      CREATE TABLE IF NOT EXISTS scans (
+        id TEXT PRIMARY KEY,
+        timestamp INTEGER,
+        date TEXT,
+        dispositivo TEXT,
+        raw TEXT,
+        codigo TEXT,
+        tipo TEXT,
+        nombre TEXT,
+        corrida TEXT,
+        composicion TEXT,
+        notas TEXT,
+        epp TEXT,
+        detalles TEXT,
+        caracterizado INTEGER
+      );
+      CREATE TABLE IF NOT EXISTS events (
+        id TEXT PRIMARY KEY,
+        codigo TEXT,
+        tipoEvento TEXT,
+        temperatura TEXT,
+        humedad TEXT,
+        dureza TEXT,
+        resistencia TEXT,
+        observaciones TEXT,
+        estadoEnsayo TEXT,
+        operador TEXT,
+        timestamp INTEGER,
+        date TEXT,
+        estadoPreAnalisis TEXT,
+        advertencias TEXT
+      );
+    `);
+    console.log('✅ Base de datos SQLite inicializada exitosamente en:', DB_FILE);
+  } catch (e) {
+    console.error('Error al configurar SQLite, operando con JSON plano:', e);
+    db = null;
+  }
+}
+
+// Clientes suscritos a SSE (Server-Sent Events) en vivo
+const sseClients = new Set();
+
+function broadcastSSE(event, data) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.write(payload);
+    } catch (e) {
+      sseClients.delete(client);
+    }
+  }
+}
 
 // Cargar catálogo de Censo de Objetos INDUPOX Set v2.0
 let censoData = {};
@@ -71,6 +150,48 @@ function saveScansToFile() {
   }
 }
 
+// Pre-Análisis de Calidad en Adquisición de Datos
+function ejecutarPreAnalisisCaptura(payload) {
+  const advertencias = [];
+  
+  // 1. Validar rango de temperatura (°C) si está presente
+  if (payload.temperatura) {
+    const tempNum = parseFloat(String(payload.temperatura).replace(/[^0-9.-]/g, ''));
+    if (!isNaN(tempNum)) {
+      if (tempNum < 10 || tempNum > 50) {
+        advertencias.push(`Temperatura fuera de tolerancia norma (${tempNum} °C vs 10-50°C)`);
+      }
+    }
+  }
+
+  // 2. Validar rango de dureza (Shore D/A)
+  if (payload.dureza) {
+    const durezaNum = parseFloat(String(payload.dureza).replace(/[^0-9.-]/g, ''));
+    if (!isNaN(durezaNum)) {
+      if (durezaNum < 0 || durezaNum > 100) {
+        advertencias.push(`Valor de dureza incoherente (${durezaNum} Shore vs 0-100)`);
+      }
+    }
+  }
+
+  // 3. Control de captura reciente (duplicado en la última hora)
+  if (payload.codigo) {
+    const codeUpper = String(payload.codigo).toUpperCase();
+    const reciente = eventsList.find(e => 
+      String(e.codigo).toUpperCase() === codeUpper && 
+      (Date.now() - (e.timestamp || 0)) < (60 * 60 * 1000)
+    );
+    if (reciente) {
+      advertencias.push(`Muestra ensayada recientemente hace <60m`);
+    }
+  }
+
+  return {
+    estadoPreAnalisis: advertencias.length > 0 ? 'ADVERTENCIA' : 'OK',
+    advertencias: advertencias.join(' | ')
+  };
+}
+
 // Enriquecer un escaneo con los datos de bitácora más recientes de ese código
 function enrichScanWithLatestEvent(scan) {
   if (!scan || !scan.codigo) return scan;
@@ -84,10 +205,16 @@ function enrichScanWithLatestEvent(scan) {
       temperatura: latestEvent.temperatura || scan.temperatura || '',
       dureza: latestEvent.dureza || scan.dureza || '',
       observaciones: latestEvent.observaciones || scan.observaciones || '',
-      operador: latestEvent.operador || scan.operador || 'Operador de Campo'
+      operador: latestEvent.operador || scan.operador || 'Operador de Campo',
+      estadoPreAnalisis: latestEvent.estadoPreAnalisis || scan.estadoPreAnalisis || 'OK',
+      advertencias: latestEvent.advertencias || scan.advertencias || ''
     };
   }
-  return scan;
+  return {
+    ...scan,
+    estadoPreAnalisis: scan.estadoPreAnalisis || 'OK',
+    advertencias: scan.advertencias || ''
+  };
 }
 
 // Convertidor de Objeto JS a Formato YAML nativo
@@ -110,6 +237,25 @@ function objectToYaml(obj, indent = 0) {
     }
   }
   return yaml;
+}
+
+// Convertidor a CSV/TSV estructurado de adquisición
+function objectsToCsv(items, delimiter = ',') {
+  if (!items || items.length === 0) return '';
+  const headers = ['id', 'timestamp', 'date', 'codigo', 'tipo', 'nombre', 'corrida', 'composicion', 'tipoEvento', 'temperatura', 'dureza', 'estadoPreAnalisis', 'advertencias', 'operador', 'raw'];
+  let result = headers.join(delimiter) + '\n';
+
+  items.forEach(item => {
+    const enriched = enrichScanWithLatestEvent(item);
+    const row = headers.map(h => {
+      const val = enriched[h] !== undefined && enriched[h] !== null ? String(enriched[h]) : '';
+      const escaped = val.replace(/"/g, '""');
+      return `"${escaped}"`;
+    });
+    result += row.join(delimiter) + '\n';
+  });
+
+  return result;
 }
 
 // Caracterización de Código QR
@@ -175,6 +321,22 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ================= SSE TRANSMISIÓN EN TIEMPO REAL =================
+  if (pathname === '/api/stream' && req.method === 'GET') {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*'
+    });
+    res.write('retry: 5000\n\n');
+    sseClients.add(res);
+    req.on('close', () => {
+      sseClients.delete(res);
+    });
+    return;
+  }
+
   // ================= API ENDPOINTS =================
 
   // Catálogo Censo
@@ -207,6 +369,7 @@ const server = http.createServer((req, res) => {
           detalles: item.detalles || ''
         };
         saveCensoToFile();
+        broadcastSSE('censo_update', censoData[cleanCode]);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ success: true, item: censoData[cleanCode] }));
       } catch (e) {
@@ -217,7 +380,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Bitácora de Eventos de Ensayos
+  // Bitácora de Eventos de Ensayos (Con Pre-Análisis de Calidad)
   if (pathname === '/api/events' && req.method === 'GET') {
     const filterCodigo = queryParams.get('codigo');
     let filteredEvents = eventsList;
@@ -240,6 +403,10 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ error: 'El código de la muestra es obligatorio' }));
           return;
         }
+
+        // Pre-análisis de calidad de la captura
+        const preAnalisis = ejecutarPreAnalisisCaptura(payload);
+
         const eventEntry = {
           id: Date.now() + Math.random(),
           codigo: payload.codigo.trim().toUpperCase(),
@@ -252,7 +419,9 @@ const server = http.createServer((req, res) => {
           estadoEnsayo: payload.estadoEnsayo || 'En Proceso',
           operador: payload.operador || 'Técnico de Campo',
           timestamp: Date.now(),
-          date: new Date().toLocaleString()
+          date: new Date().toLocaleString(),
+          estadoPreAnalisis: preAnalisis.estadoPreAnalisis,
+          advertencias: preAnalisis.advertencias
         };
         eventsList.unshift(eventEntry);
         saveEventsToFile();
@@ -267,14 +436,19 @@ const server = http.createServer((req, res) => {
               temperatura: eventEntry.temperatura,
               dureza: eventEntry.dureza,
               observaciones: eventEntry.observaciones,
-              operador: eventEntry.operador
+              operador: eventEntry.operador,
+              estadoPreAnalisis: eventEntry.estadoPreAnalisis,
+              advertencias: eventEntry.advertencias
             };
           }
         });
         saveScansToFile();
 
+        // Transmisión en tiempo real a clientes conectados
+        broadcastSSE('event_added', eventEntry);
+
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ success: true, event: eventEntry }));
+        res.end(JSON.stringify({ success: true, event: eventEntry, preAnalisis }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ error: 'Payload JSON inválido' }));
@@ -304,7 +478,7 @@ const server = http.createServer((req, res) => {
           const text = typeof item === 'string' ? item : (item.text || item.raw);
           if (!text) return;
 
-          const exists = scansList.some(s => s.raw === text && (Date.now() - s.timestamp < 5000));
+          const exists = scansList.some(s => s.raw === text && (Date.now() - s.timestamp < 3000));
           if (!exists) {
             const charData = caracterizarQr(text);
             const entry = {
@@ -317,10 +491,13 @@ const server = http.createServer((req, res) => {
               dureza: item.dureza || '',
               observaciones: item.observaciones || '',
               operador: item.operador || '',
+              estadoPreAnalisis: item.estadoPreAnalisis || 'OK',
+              advertencias: item.advertencias || '',
               ...charData
             };
             scansList.unshift(entry);
             addedCount++;
+            broadcastSSE('scan_added', entry);
           }
         });
 
@@ -342,6 +519,7 @@ const server = http.createServer((req, res) => {
     const idToDelete = pathname.replace('/api/scans/', '');
     scansList = scansList.filter(s => String(s.id) !== String(idToDelete));
     saveScansToFile();
+    broadcastSSE('scan_deleted', { id: idToDelete });
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ success: true, remaining: scansList.length }));
     return;
@@ -350,12 +528,13 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/scans' && req.method === 'DELETE') {
     scansList = [];
     saveScansToFile();
+    broadcastSSE('scan_deleted_all', {});
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ success: true, total: 0 }));
     return;
   }
 
-  // Exportar a JSON / YAML con campos enriquecidos de bitácora
+  // Exportar a JSON / YAML / CSV / TSV con pre-análisis enriquecido
   if (pathname === '/api/export' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
@@ -384,8 +563,26 @@ const server = http.createServer((req, res) => {
           return;
         }
 
+        const fmtLower = format.toLowerCase();
+        if (fmtLower === 'csv' || fmtLower === 'tsv') {
+          const delimiter = fmtLower === 'tsv' ? '\t' : ',';
+          const filename = `adquisicion_muestras_${Date.now()}.${fmtLower}`;
+          const filePath = path.join(destDir, filename);
+          const content = objectsToCsv(exportItems, delimiter);
+          fs.writeFileSync(filePath, content, 'utf8');
+          
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({
+            success: true,
+            count: exportItems.length,
+            targetDir: destDir,
+            files: [{ filename, filePath }]
+          }));
+          return;
+        }
+
         const exportedFiles = [];
-        const isYaml = format.toLowerCase() === 'yaml' || format.toLowerCase() === 'yml';
+        const isYaml = fmtLower === 'yaml' || fmtLower === 'yml';
 
         exportItems.forEach(item => {
           const enriched = enrichScanWithLatestEvent(item);

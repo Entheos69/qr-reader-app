@@ -341,10 +341,11 @@
             <input type="text" id="search-input" placeholder="Buscar código (M04, P05), operador, temperatura, dureza...">
           </div>
 
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button id="refresh-btn" class="btn btn-secondary"><i data-lucide="refresh-cw"></i> Actualizar</button>
-            <button id="export-all-json-btn" class="btn btn-secondary"><i data-lucide="file-json"></i> Exportar Todo JSON</button>
-            <button id="export-all-yaml-btn" class="btn btn-secondary"><i data-lucide="file-code"></i> Exportar Todo YAML</button>
+            <button id="export-all-json-btn" class="btn btn-secondary"><i data-lucide="file-json"></i> Exportar JSON</button>
+            <button id="export-all-yaml-btn" class="btn btn-secondary"><i data-lucide="file-code"></i> Exportar YAML</button>
+            <button id="export-all-csv-btn" class="btn btn-secondary"><i data-lucide="file-spreadsheet"></i> Exportar CSV</button>
             <button id="clear-all-scans-btn" class="btn btn-secondary" style="color: var(--accent-danger);"><i data-lucide="trash-2"></i> Limpiar Todo</button>
           </div>
         </div>
@@ -355,9 +356,10 @@
               <th>Código</th>
               <th>Tipo</th>
               <th>Nombre de Objeto / Fórmula</th>
+              <th>Pre-Análisis Captura</th>
               <th>Datos de Bitácora (Temp / Dureza / Operador)</th>
               <th>Fecha / Hora</th>
-              <th style="text-align: right;">Acciones (Exportar / Eliminar)</th>
+              <th style="text-align: right;">Acciones</th>
             </tr>
           </thead>
           <tbody id="table-body"></tbody>
@@ -448,11 +450,15 @@
       initNavTabs();
       fetchCatalog();
       fetchScans();
-      setInterval(fetchScans, 4000);
+      initNavTabs();
+      fetchCatalog();
+      fetchScans();
+      initSSE();
 
       document.getElementById('refresh-btn').addEventListener('click', fetchScans);
       document.getElementById('export-all-json-btn').addEventListener('click', () => exportAll('json'));
       document.getElementById('export-all-yaml-btn').addEventListener('click', () => exportAll('yaml'));
+      document.getElementById('export-all-csv-btn').addEventListener('click', () => exportAll('csv'));
       document.getElementById('clear-all-scans-btn').addEventListener('click', clearAllScans);
       document.getElementById('pick-dir-btn').addEventListener('click', handlePickDirectory);
 
@@ -460,12 +466,26 @@
       document.getElementById('generate-pdf-btn').addEventListener('click', renderPdfSheetAndPrint);
     });
 
+    function initSSE() {
+      try {
+        const evtSource = new EventSource('/api/stream');
+        evtSource.onmessage = () => fetchScans();
+        evtSource.addEventListener('scan_added', fetchScans);
+        evtSource.addEventListener('event_added', fetchScans);
+        evtSource.addEventListener('scan_deleted', fetchScans);
+        evtSource.addEventListener('scan_deleted_all', fetchScans);
+      } catch (e) {
+        console.warn("SSE no disponible, usando polling:", e);
+        setInterval(fetchScans, 4000);
+      }
+    }
+
     async function handlePickDirectory() {
       if ('showDirectoryPicker' in window) {
         try {
           selectedDirectoryHandle = await window.showDirectoryPicker();
           document.getElementById('target-dir-input').value = `Carpeta: ${selectedDirectoryHandle.name}`;
-          alert(`Carpeta "${selectedDirectoryHandle.name}" seleccionada. Los archivos JSON/YAML se guardarán directamente aquí.`);
+          alert(`Carpeta "${selectedDirectoryHandle.name}" seleccionada. Los archivos JSON/YAML/CSV se guardarán directamente aquí.`);
         } catch (err) {
           console.log("Selección de carpeta cancelada");
         }
@@ -532,7 +552,7 @@
       });
 
       if (filtered.length === 0) {
-        body.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No hay lecturas registradas aún.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No hay lecturas registradas aún.</td></tr>`;
         return;
       }
 
@@ -540,6 +560,11 @@
         let tagClass = 'tag-otro';
         if (s.tipo && s.tipo.includes('OPERATIVA')) tagClass = 'tag-operativa';
         if (s.tipo && s.tipo.includes('IDENTIDAD')) tagClass = 'tag-identidad';
+
+        const isWarn = s.estadoPreAnalisis === 'ADVERTENCIA';
+        const preTag = isWarn 
+          ? `<span class="pre-analysis-tag-warn" title="${escapeHtml(s.advertencias || '')}">⚠️ Advertencia</span>`
+          : `<span class="pre-analysis-tag-ok">✓ Verificado</span>`;
 
         const hasEvent = s.temperatura || s.dureza || s.observaciones || s.operador;
 
@@ -551,6 +576,7 @@
               <div style="font-weight: 600; color: #fff;">${escapeHtml(s.nombre || s.raw)}</div>
               <small style="color: var(--text-muted);">${escapeHtml(s.composicion || s.detalles || '')}</small>
             </td>
+            <td>${preTag}${s.advertencias ? `<div style="font-size:0.75rem; color:#fef08a;">${escapeHtml(s.advertencias)}</div>` : ''}</td>
             <td>
               ${hasEvent ? `
                 <div style="font-size: 0.82rem; color: #fff;">
