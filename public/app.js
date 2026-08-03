@@ -47,7 +47,52 @@ document.addEventListener('DOMContentLoaded', () => {
   initScanner();
   initCaptures();
   initModal();
+  initSyncWithPC();
 });
+
+// Transmitir escaneos al Servidor Central PC
+async function sendScanToServer(scanData) {
+  try {
+    await fetch('/api/scans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(scanData)
+    });
+  } catch (e) {
+    console.warn("No se pudo transmitir el escaneo al servidor PC:", e);
+  }
+}
+
+// Sincronizar todo el historial guardado en el Celular hacia la PC
+function initSyncWithPC() {
+  const syncBtn = document.getElementById('sync-pc-btn');
+  if (!syncBtn) return;
+
+  syncBtn.addEventListener('click', async () => {
+    if (scanHistory.length === 0) {
+      alert("No hay lecturas en el celular para sincronizar.");
+      return;
+    }
+
+    syncBtn.innerHTML = `<i data-lucide="loader"></i> Sincronizando...`;
+    lucide.createIcons();
+
+    try {
+      const res = await fetch('/api/scans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scanHistory)
+      });
+      const data = await res.json();
+      alert(`¡Sincronización Exitosa! ${data.added || 0} lecturas enviadas al escritorio de tu PC.`);
+    } catch (e) {
+      alert("Error al conectar con la PC. Asegúrate de tener conexión a internet.");
+    } finally {
+      syncBtn.innerHTML = `<i data-lucide="refresh-cw"></i> Sincronizar Historial con PC`;
+      lucide.createIcons();
+    }
+  });
+}
 
 // Navigation Tabs
 function initTabs() {
@@ -103,11 +148,9 @@ async function initScanner() {
     if (camerasList && camerasList.length > 0) {
       cameraSelect.innerHTML = '';
       
-      // Buscar si el usuario ya tenía una cámara guardada en localStorage
       const savedId = localStorage.getItem('preferred_camera_id');
       let defaultIndex = camerasList.findIndex(c => c.id === savedId);
 
-      // Si no hay guardada, buscar ultra wide / wide / back / 0
       if (defaultIndex === -1) {
         defaultIndex = camerasList.findIndex(c => 
           c.label.toLowerCase().includes('ultra') ||
@@ -220,17 +263,23 @@ function onScanSuccess(decodedText) {
   document.getElementById('restart-scan-btn').style.display = 'inline-flex';
   document.getElementById('status-text').innerText = "Código detectado";
 
+  const scanEntry = {
+    id: Date.now(),
+    text: decodedText,
+    date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  };
+
   saveToHistory(decodedText);
+  sendScanToServer(scanEntry);
   showResultModal(decodedText);
 }
 
 function onScanError(errorMessage) {
-  // Errores normales por cuadro en escaneo
+  // Errores normales por cuadro
 }
 
 // Captura Nativa & Galería
 function initCaptures() {
-  // Captura Nativa HD para Campo
   const nativeInput = document.getElementById('qr-native-capture');
   if (nativeInput) {
     nativeInput.addEventListener('change', async (e) => {
@@ -245,7 +294,6 @@ function initCaptures() {
     });
   }
 
-  // Galería
   const fileInput = document.getElementById('qr-file-input');
   if (fileInput) {
     fileInput.addEventListener('change', async (e) => {

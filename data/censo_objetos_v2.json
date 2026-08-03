@@ -1,0 +1,358 @@
+{
+  "M04": {
+    "codigo": "M04",
+    "tipo": "OPERATIVA",
+    "nombre": "Gel de referencia · 150 g",
+    "corrida": "corrida 4",
+    "composicion": "93.75 g resina + 56.25 g endurecedor",
+    "notas": "cien a sesenta · hilo 55-75 min",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M08": {
+    "codigo": "M08",
+    "tipo": "OPERATIVA",
+    "nombre": "Dispersión arcilla 0 %",
+    "corrida": "corrida 8",
+    "composicion": "100.00 g resina + 0.00 g arcilla · blanco",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M09": {
+    "codigo": "M09",
+    "tipo": "OPERATIVA",
+    "nombre": "Dispersión arcilla 1 %",
+    "corrida": "corrida 9",
+    "composicion": "99.00 g resina + 1.00 g arcilla",
+    "notas": "10 min cizalla máx.",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M10": {
+    "codigo": "M10",
+    "tipo": "OPERATIVA",
+    "nombre": "Dispersión arcilla 2 %",
+    "corrida": "corrida 10",
+    "composicion": "98.00 g resina + 2.00 g arcilla",
+    "notas": "10 min cizalla máx.",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M11": {
+    "codigo": "M11",
+    "tipo": "OPERATIVA",
+    "nombre": "Dispersión arcilla 3 %",
+    "corrida": "corrida 11",
+    "composicion": "97.00 g resina + 3.00 g arcilla",
+    "notas": "10 min cizalla máx.",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M12": {
+    "codigo": "M12",
+    "tipo": "OPERATIVA",
+    "nombre": "Dispersión 2 % + activador",
+    "corrida": "corrida 12",
+    "composicion": "98.00 g resina + 2.00 g arcilla + 0.60 g alcohol-agua 95/5 (doméstico)",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M13": {
+    "codigo": "M13",
+    "tipo": "OPERATIVA",
+    "nombre": "Descuelgue 0 %",
+    "corrida": "corrida 13",
+    "composicion": "50.00 g dispersión M08 + 30.00 g endurecedor",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M14": {
+    "codigo": "M14",
+    "tipo": "OPERATIVA",
+    "nombre": "Descuelgue 1 %",
+    "corrida": "corrida 14",
+    "composicion": "50.00 g dispersión M09 + 29.70 g endurecedor",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M15": {
+    "codigo": "M15",
+    "tipo": "OPERATIVA",
+    "nombre": "Descuelgue 2 %",
+    "corrida": "corrida 15",
+    "composicion": "50.00 g dispersión M10 + 29.40 g endurecedor",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M16": {
+    "codigo": "M16",
+    "tipo": "OPERATIVA",
+    "nombre": "Descuelgue 3 %",
+    "corrida": "corrida 16",
+    "composicion": "50.00 g dispersión M11 + 29.10 g endurecedor",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M17": {
+    "codigo": "M17",
+    "tipo": "OPERATIVA",
+    "nombre": "Descuelgue 2 % activado",
+    "corrida": "corrida 17",
+    "composicion": "50.00 g dispersión M12 + 29.40 g endurecedor",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M18": {
+    "codigo": "M18",
+    "tipo": "OPERATIVA",
+    "nombre": "Pasta 50 % blanco",
+    "corrida": "corrida 18",
+    "composicion": "50.00 g endurecedor + 50.00 g dióxido de titanio",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M19": {
+    "codigo": "M19",
+    "tipo": "OPERATIVA",
+    "nombre": "Pasta 55 % blanco",
+    "corrida": "corrida 19",
+    "composicion": "45.00 g endurecedor + 55.00 g dióxido de titanio",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M20": {
+    "codigo": "M20",
+    "tipo": "OPERATIVA",
+    "nombre": "Pasta 60 % blanco",
+    "corrida": "corrida 20",
+    "composicion": "40.00 g endurecedor + 60.00 g dióxido de titanio",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M21": {
+    "codigo": "M21",
+    "tipo": "OPERATIVA",
+    "nombre": "Pasta 65 % blanco",
+    "corrida": "corrida 21",
+    "composicion": "35.00 g endurecedor + 65.00 g dióxido de titanio",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M22": {
+    "codigo": "M22",
+    "tipo": "OPERATIVA",
+    "nombre": "LOTE MADRE pasta 35/65 · 1200 g",
+    "corrida": "corrida 22",
+    "composicion": "420.00 g endurecedor + 780.00 g dióxido de titanio",
+    "notas": "agitar antes de usar",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "A25": {
+    "codigo": "A25",
+    "tipo": "OPERATIVA",
+    "nombre": "Comp. A vertical 97/3 · 70 g",
+    "corrida": "corrida 25",
+    "composicion": "67.90 g resina + 2.10 g arcilla",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "A26": {
+    "codigo": "A26",
+    "tipo": "OPERATIVA",
+    "nombre": "Comp. A junta 95/5 · 70 g",
+    "corrida": "corrida 26",
+    "composicion": "66.50 g resina + 3.50 g arcilla",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "A27": {
+    "codigo": "A27",
+    "tipo": "OPERATIVA",
+    "nombre": "Comp. A recubrimiento · 110 g",
+    "corrida": "corrida 27",
+    "composicion": "85.80 g resina + 11.00 g diluyente + 11.00 g dióxido de titanio + 2.20 g arcilla",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M28": {
+    "codigo": "M28",
+    "tipo": "OPERATIVA",
+    "nombre": "Vida · adhesivo fluido",
+    "corrida": "corrida 28",
+    "composicion": "62.50 g resina + 37.50 g endurecedor",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M29": {
+    "codigo": "M29",
+    "tipo": "OPERATIVA",
+    "nombre": "Vida · masilla blanca 1:1",
+    "corrida": "corrida 29",
+    "composicion": "36.77 g resina + 63.23 g pasta M22",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M30": {
+    "codigo": "M30",
+    "tipo": "OPERATIVA",
+    "nombre": "Vida · adhesivo vertical 1:1",
+    "corrida": "corrida 30",
+    "composicion": "36.99 g de A25 + 63.01 g pasta M22",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M31": {
+    "codigo": "M31",
+    "tipo": "OPERATIVA",
+    "nombre": "Vida · masilla de junta 1:1",
+    "corrida": "corrida 31",
+    "composicion": "37.14 g de A26 + 62.86 g pasta M22",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M32": {
+    "codigo": "M32",
+    "tipo": "OPERATIVA",
+    "nombre": "Vida · recubrimiento",
+    "corrida": "corrida 32",
+    "composicion": "66.31 g de A27 + 33.69 g endurecedor",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M38": {
+    "codigo": "M38",
+    "tipo": "OPERATIVA",
+    "nombre": "Adhesión · fluido",
+    "corrida": "corrida 38",
+    "composicion": "12.50 g resina + 7.50 g endurecedor · 12 uniones",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M39": {
+    "codigo": "M39",
+    "tipo": "OPERATIVA",
+    "nombre": "Adhesión · masilla 1:1",
+    "corrida": "corrida 39",
+    "composicion": "7.35 g resina + 12.65 g pasta M22 · 12 uniones",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M40": {
+    "codigo": "M40",
+    "tipo": "OPERATIVA",
+    "nombre": "Adhesión · vertical 1:1",
+    "corrida": "corrida 40",
+    "composicion": "7.40 g de A25 + 12.60 g pasta M22 · 12 uniones",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M41": {
+    "codigo": "M41",
+    "tipo": "OPERATIVA",
+    "nombre": "Adhesión · junta 1:1",
+    "corrida": "corrida 41",
+    "composicion": "7.43 g de A26 + 12.57 g pasta M22 · 12 uniones",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M45": {
+    "codigo": "M45",
+    "tipo": "OPERATIVA - CONDICIONADA",
+    "nombre": "Puentes control (sin malla)",
+    "corrida": "corrida 45",
+    "composicion": "7.43 g de A26 + 12.57 g pasta M22 · 3 puentes",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M46": {
+    "codigo": "M46",
+    "tipo": "OPERATIVA - CONDICIONADA",
+    "nombre": "Puentes malla de vidrio",
+    "corrida": "corrida 46",
+    "composicion": "7.43 g de A26 + 12.57 g pasta + malla 38x23 mm a media capa",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M47": {
+    "codigo": "M47",
+    "tipo": "OPERATIVA - CONDICIONADA",
+    "nombre": "Puentes malla metálica",
+    "corrida": "corrida 47",
+    "composicion": "7.43 g de A26 + 12.57 g pasta + malla 38x23 mm a media capa",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M48": {
+    "codigo": "M48",
+    "tipo": "OPERATIVA - CONDICIONADA",
+    "nombre": "Carbonato 45 %",
+    "corrida": "corrida 48",
+    "composicion": "55.00 g endurecedor + 45.00 g carbonato",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M49": {
+    "codigo": "M49",
+    "tipo": "OPERATIVA - CONDICIONADA",
+    "nombre": "Carbonato 50 %",
+    "corrida": "corrida 49",
+    "composicion": "50.00 g endurecedor + 50.00 g carbonato",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M50": {
+    "codigo": "M50",
+    "tipo": "OPERATIVA - CONDICIONADA",
+    "nombre": "Carbonato 55 % (paridad)",
+    "corrida": "corrida 50",
+    "composicion": "45.00 g endurecedor + 55.00 g carbonato",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M51": {
+    "codigo": "M51",
+    "tipo": "OPERATIVA - CONDICIONADA",
+    "nombre": "Carbonato 60 %",
+    "corrida": "corrida 51",
+    "composicion": "40.00 g endurecedor + 60.00 g carbonato",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M52": {
+    "codigo": "M52",
+    "tipo": "OPERATIVA - CONDICIONADA",
+    "nombre": "LOTE pasta carbonato 45.3/54.7 · 400 g",
+    "corrida": "corrida 52",
+    "composicion": "181.20 g endurecedor + 218.80 g carbonato",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "M55": {
+    "codigo": "M55",
+    "tipo": "OPERATIVA - CONDICIONADA",
+    "nombre": "Vida · masilla carbonato 1:1",
+    "corrida": "corrida 55",
+    "composicion": "43.04 g resina + 56.96 g pasta M52",
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+  },
+  "P05": {
+    "codigo": "P05",
+    "tipo": "IDENTIDAD",
+    "nombre": "Probeta dureza 100:50",
+    "corrida": "corrida 5"
+  },
+  "P06": {
+    "codigo": "P06",
+    "tipo": "IDENTIDAD",
+    "nombre": "Probeta dureza 100:60",
+    "corrida": "corrida 6"
+  },
+  "P07": {
+    "codigo": "P07",
+    "tipo": "IDENTIDAD",
+    "nombre": "Probeta dureza 100:75",
+    "corrida": "corrida 7"
+  },
+  "D13": { "codigo": "D13", "tipo": "IDENTIDAD", "nombre": "Placa de descuelgue", "corrida": "corrida 13" },
+  "D14": { "codigo": "D14", "tipo": "IDENTIDAD", "nombre": "Placa de descuelgue", "corrida": "corrida 14" },
+  "D15": { "codigo": "D15", "tipo": "IDENTIDAD", "nombre": "Placa de descuelgue", "corrida": "corrida 15" },
+  "D16": { "codigo": "D16", "tipo": "IDENTIDAD", "nombre": "Placa de descuelgue", "corrida": "corrida 16" },
+  "D17": { "codigo": "D17", "tipo": "IDENTIDAD", "nombre": "Placa de descuelgue", "corrida": "corrida 17" },
+  "F24A": { "codigo": "F24A", "tipo": "IDENTIDAD", "nombre": "Frasco antised. + arcilla", "corrida": "corrida 24" },
+  "F24B": { "codigo": "F24B", "tipo": "IDENTIDAD", "nombre": "Frasco antised. control", "corrida": "corrida 24" },
+  "P33": { "codigo": "P33", "tipo": "IDENTIDAD", "nombre": "Probeta · fluido báscula", "corrida": "corrida 33" },
+  "P34": { "codigo": "P34", "tipo": "IDENTIDAD", "nombre": "Probeta · masilla 1:1", "corrida": "corrida 34" },
+  "P35": { "codigo": "P35", "tipo": "IDENTIDAD", "nombre": "Probeta · vertical 1:1", "corrida": "corrida 35" },
+  "P36": { "codigo": "P36", "tipo": "IDENTIDAD", "nombre": "Probeta · junta 1:1", "corrida": "corrida 36" },
+  "P37": { "codigo": "P37", "tipo": "IDENTIDAD", "nombre": "Probeta · recubrimiento", "corrida": "corrida 37" },
+  "U38AC": { "codigo": "U38AC", "tipo": "IDENTIDAD", "nombre": "Celda unión · fluido / acero", "corrida": "corrida 38", "detalles": "3 uniones a lápiz" },
+  "U38AL": { "codigo": "U38AL", "tipo": "IDENTIDAD", "nombre": "Celda unión · fluido / aluminio", "corrida": "corrida 38", "detalles": "3 uniones a lápiz" },
+  "U38FV": { "codigo": "U38FV", "tipo": "IDENTIDAD", "nombre": "Celda unión · fluido / fibra vidrio", "corrida": "corrida 38", "detalles": "3 uniones a lápiz" },
+  "U38TF": { "codigo": "U38TF", "tipo": "IDENTIDAD", "nombre": "Celda unión · fluido / termoformado", "corrida": "corrida 38", "detalles": "3 uniones a lápiz" },
+  "U39AC": { "codigo": "U39AC", "tipo": "IDENTIDAD", "nombre": "Celda unión · masilla 1:1 / acero", "corrida": "corrida 39", "detalles": "3 uniones a lápiz" },
+  "U39AL": { "codigo": "U39AL", "tipo": "IDENTIDAD", "nombre": "Celda unión · masilla 1:1 / aluminio", "corrida": "corrida 39", "detalles": "3 uniones a lápiz" },
+  "U39FV": { "codigo": "U39FV", "tipo": "IDENTIDAD", "nombre": "Celda unión · masilla 1:1 / fibra vidrio", "corrida": "corrida 39", "detalles": "3 uniones a lápiz" },
+  "U39TF": { "codigo": "U39TF", "tipo": "IDENTIDAD", "nombre": "Celda unión · masilla 1:1 / termoformado", "corrida": "corrida 39", "detalles": "3 uniones a lápiz" },
+  "U40AC": { "codigo": "U40AC", "tipo": "IDENTIDAD", "nombre": "Celda unión · vertical / acero", "corrida": "corrida 40", "detalles": "3 uniones a lápiz" },
+  "U40AL": { "codigo": "U40AL", "tipo": "IDENTIDAD", "nombre": "Celda unión · vertical / aluminio", "corrida": "corrida 40", "detalles": "3 uniones a lápiz" },
+  "U40FV": { "codigo": "U40FV", "tipo": "IDENTIDAD", "nombre": "Celda unión · vertical / fibra vidrio", "corrida": "corrida 40", "detalles": "3 uniones a lápiz" },
+  "U40TF": { "codigo": "U40TF", "tipo": "IDENTIDAD", "nombre": "Celda unión · vertical / termoformado", "corrida": "corrida 40", "detalles": "3 uniones a lápiz" },
+  "U41AC": { "codigo": "U41AC", "tipo": "IDENTIDAD", "nombre": "Celda unión · junta / acero", "corrida": "corrida 41", "detalles": "3 uniones a lápiz" },
+  "U41AL": { "codigo": "U41AL", "tipo": "IDENTIDAD", "nombre": "Celda unión · junta / aluminio", "corrida": "corrida 41", "detalles": "3 uniones a lápiz" },
+  "U41FV": { "codigo": "U41FV", "tipo": "IDENTIDAD", "nombre": "Celda unión · junta / fibra vidrio", "corrida": "corrida 41", "detalles": "3 uniones a lápiz" },
+  "U41TF": { "codigo": "U41TF", "tipo": "IDENTIDAD", "nombre": "Celda unión · junta / termoformado", "corrida": "corrida 41", "detalles": "3 uniones a lápiz" },
+  "K44": { "codigo": "K44", "tipo": "IDENTIDAD", "nombre": "Cupón identificación plástico", "corrida": "corrida 44" },
+  "R45": { "codigo": "R45", "tipo": "IDENTIDAD", "nombre": "Puentes sin malla (control)", "corrida": "corrida 45" },
+  "R46": { "codigo": "R46", "tipo": "IDENTIDAD", "nombre": "Puentes malla de vidrio", "corrida": "corrida 46" },
+  "R47": { "codigo": "R47", "tipo": "IDENTIDAD", "nombre": "Puentes malla metálica", "corrida": "corrida 47" },
+  "F42": { "codigo": "F42", "tipo": "IDENTIDAD", "nombre": "Frasco anaquel 35/65", "corrida": "corrida 42" },
+  "F43": { "codigo": "F43", "tipo": "IDENTIDAD", "nombre": "Frasco anaquel + arcilla 1.5 %", "corrida": "corrida 43" },
+  "F54A": { "codigo": "F54A", "tipo": "IDENTIDAD", "nombre": "Frasco antised. carbonato +", "corrida": "corrida 54" },
+  "F54B": { "codigo": "F54B", "tipo": "IDENTIDAD", "nombre": "Frasco antised. carbonato control", "corrida": "corrida 54" },
+  "P56": { "codigo": "P56", "tipo": "IDENTIDAD", "nombre": "Probeta · masilla carbonato", "corrida": "corrida 56" }
+}
