@@ -11,9 +11,9 @@ concept_sediment:
 
   summary: |
     Sesión de formalización e integración del Protocolo de Preservación de Continuidad Inter-Agente
-    y Memoria Transferible. Se incorporó el kit tripartito de habilidades (`episteme-minimo`,
-    `sedimentar-cs` v2 y `consolidar-aec` v2), la especificación del identificador canónico `Antigravity`,
-    el gatillo obligatorio `Prepara cierre de sesión` y la confirmación de alineación `Contexto del sistema listo`.
+    y Memoria Transferible. Se realizó la verificación previa MTV contra el Grafo Semántico,
+    enlazando los conceptos trabajados con los nodos canónicos existentes (ej. 'Marco Teórico Vivo como método de consulta proactiva al grafo'
+    y 'protocolo de cierre unificado multi-agente').
 
   concepts:
     - name: "protocolo de continuidad inter-agente"
@@ -27,6 +27,8 @@ concept_sediment:
           notes: "Gloss-de-target: la continuidad se logra preservando la interpretabilidad en artefactos leíbles y commits semánticos."
         - target: "la memoria del agente es la capa FRONTERA del grafo, no un anexo suyo"
           relation: refines
+        - target: "protocolo de cierre unificado multi-agente"
+          relation: refines
       notes: |
         Definición del conjunto de reglas que permite a cualquier instancia de IA o desarrollador
         asumir el proyecto preservando el rastro de decisiones independientemente de las herramientas efímeras.
@@ -38,6 +40,9 @@ concept_sediment:
       related_to:
         - target: "protocolo de continuidad inter-agente"
           relation: refines
+        - target: "protocolo de cierre de sesion: 13 secciones"
+          relation: complements
+          notes: "Complementa el protocolo de cierre al ejecutarse de forma preventiva en sesiones largas o ante refactorizaciones."
       notes: |
         Mecanismo de resguardo intermedio que se dispara ante sesiones extensas o previo a refactorizaciones
         complejas para prevenir el desgaste del contexto de ventana o la degradación epistémica.
@@ -48,9 +53,9 @@ concept_sediment:
         - workflow_protocols
         - documentation
       related_to:
-        - target: "Marco Teórico Vivo"
+        - target: "Marco Teórico Vivo como método de consulta proactiva al grafo"
           relation: derived_from
-          notes: "Gloss-de-target: consulta previa del marco teórico según la naturaleza del dato (Semántico, Catastro, AEC)."
+          notes: "Gloss-de-target: consulta previa del marco teórico discriminando por la naturaleza del dato (Semántico, Catastro, AEC)."
       notes: |
         Norma de consulta que exige discriminar entre conceptos (Semántico), documentos (Catastro)
         e indagaciones web (Ek-Chuah) antes de analizar o programar una solución.
