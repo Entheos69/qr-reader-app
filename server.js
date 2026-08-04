@@ -339,6 +339,30 @@ const server = http.createServer((req, res) => {
 
   // ================= API ENDPOINTS =================
 
+  // Autenticación de Operador (Audit Log)
+  if (pathname === '/api/login' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body);
+        const operatorName = (payload.operador || '').trim();
+        if (!operatorName) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'Nombre de operador requerido' }));
+          return;
+        }
+        console.log(`🔑 Sesión iniciada para operador: ${operatorName}`);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ success: true, operador: operatorName, sessionStart: Date.now() }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Payload JSON inválido' }));
+      }
+    });
+    return;
+  }
+
   // Catálogo Censo
   if (pathname === '/api/censo' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });

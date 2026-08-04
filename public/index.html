@@ -44,6 +44,13 @@
       
       <div style="display: flex; gap: 8px; align-items: center;">
         <span id="network-badge" class="badge-online" title="Estado de Red">Online</span>
+        
+        <!-- Sesión de Operador / Login -->
+        <button id="operator-session-btn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" title="Operador Autenticado">
+          <i data-lucide="user-check"></i>
+          <span id="operator-name-display">Ingresar</span>
+        </button>
+
         <button id="toggle-audio-btn" class="icon-btn" title="Activar/Desactivar Sonido">
           <i data-lucide="volume-2" id="audio-icon"></i>
         </button>
@@ -180,6 +187,38 @@
 
     </main>
 
+    <!-- Modal de Inicio de Sesión de Operador -->
+    <div id="login-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-icon success">
+            <i data-lucide="shield-check"></i>
+          </div>
+          <h3>Autenticación de Operador</h3>
+          <button id="close-login-btn" class="close-btn">&times;</button>
+        </div>
+        
+        <form id="login-form" class="modal-body" style="display:flex; flex-direction:column; gap:12px;">
+          <p style="font-size:0.85rem; color:var(--text-muted);">
+            Ingresa tu nombre o ID de técnico para autenticar tus adquisiciones automáticamente en cada corrida de ensayo.
+          </p>
+          <div class="input-group">
+            <label for="login-operator-name">Nombre / Clave de Técnico</label>
+            <input type="text" id="login-operator-name" required placeholder="ej. Ing. Juan Pérez" autocomplete="name">
+          </div>
+          <div class="input-group">
+            <label for="login-operator-pin">PIN de Seguridad (Opcional)</label>
+            <input type="password" id="login-operator-pin" placeholder="****" maxlength="8">
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button type="button" id="logout-operator-btn" class="btn btn-secondary flex-1" style="display:none; color:var(--accent-danger);">Cerrar Sesión</button>
+            <button type="submit" class="btn btn-gradient flex-1">Iniciar Sesión</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Modal de Resultado de Escaneo -->
     <div id="result-modal" class="modal-overlay" style="display: none;">
       <div class="modal-card">
@@ -213,7 +252,7 @@
       </div>
     </div>
 
-    <!-- Modal de Registro de Eventos de Ensayo / Campo (Con Pre-Análisis) -->
+    <!-- Modal de Registro de Eventos de Ensayo / Campo (Con Pre-Análisis y Operador Autenticado) -->
     <div id="event-modal" class="modal-overlay" style="display: none;">
       <div class="modal-card">
         <div class="modal-header">
@@ -253,9 +292,14 @@
             <label>Observaciones del Técnico</label>
             <input type="text" id="event-obs" placeholder="ej. Curado a 24h, buena adherencia...">
           </div>
+
+          <!-- Operador Autenticado (Pre-llenado automático) -->
           <div class="input-group">
-            <label>Nombre del Técnico / Operador</label>
-            <input type="text" id="event-operator" placeholder="ej. Operador Juan">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label>Técnico / Operador Autenticado</label>
+              <button type="button" id="change-operator-link" style="background:none; border:none; color:var(--accent-secondary); font-size:0.75rem; cursor:pointer; text-decoration:underline;">Cambiar</button>
+            </div>
+            <input type="text" id="event-operator" placeholder="ej. Operador Juan" style="background:rgba(255,255,255,0.05);">
           </div>
           
           <div style="display:flex; gap:10px; margin-top:10px;">

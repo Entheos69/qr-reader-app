@@ -15,6 +15,7 @@ let camerasList = [];
 let selectedCameraId = localStorage.getItem('preferred_camera_id') || null;
 let scanHistory = JSON.parse(localStorage.getItem('qr_history') || '[]');
 let offlineQueue = JSON.parse(localStorage.getItem('qr_offline_queue') || '[]');
+let activeOperator = localStorage.getItem('qr_active_operator') || '';
 let audioEnabled = true;
 let isScanning = false;
 let currentScannedCode = null;
@@ -101,11 +102,12 @@ async function syncOfflineQueue() {
   }
 }
 
-// DOM Elements
+// DOM Elements Initialization
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   
   initNetworkStatus();
+  initOperatorLogin();
   initTabs();
   initAudioToggle();
   initHistory();
@@ -118,21 +120,95 @@ document.addEventListener('DOMContentLoaded', () => {
   initPreAnalysisListeners();
 });
 
-// Transmitir escaneos al Servidor Central PC
+// Autenticación y Sesión de Operador
+function initOperatorLogin() {
+  const sessionBtn = document.getElementById('operator-session-btn');
+  const nameDisplay = document.getElementById('operator-name-display');
+  const loginModal = document.getElementById('login-modal');
+  const closeLoginBtn = document.getElementById('close-login-btn');
+  const loginForm = document.getElementById('login-form');
+  const nameInput = document.getElementById('login-operator-name');
+  const logoutBtn = document.getElementById('logout-operator-btn');
+  const changeOpLink = document.getElementById('change-operator-link');
+
+  function updateOperatorUI() {
+    if (activeOperator) {
+      nameDisplay.innerText = activeOperator.length > 12 ? activeOperator.substring(0, 10) + '..' : activeOperator;
+      sessionBtn.classList.remove('btn-secondary');
+      sessionBtn.classList.add('badge-online');
+      sessionBtn.style.color = '#fff';
+      if (logoutBtn) logoutBtn.style.display = 'block';
+    } else {
+      nameDisplay.innerText = 'Ingresar';
+      sessionBtn.classList.remove('badge-online');
+      sessionBtn.classList.add('btn-secondary');
+      if (logoutBtn) logoutBtn.style.display = 'none';
+    }
+    const eventOperatorInput = document.getElementById('event-operator');
+    if (eventOperatorInput) {
+      eventOperatorInput.value = activeOperator;
+    }
+  }
+
+  updateOperatorUI();
+
+  function openLogin() {
+    if (nameInput) nameInput.value = activeOperator;
+    loginModal.style.display = 'flex';
+  }
+
+  if (sessionBtn) sessionBtn.addEventListener('click', openLogin);
+  if (changeOpLink) changeOpLink.addEventListener('click', openLogin);
+
+  if (closeLoginBtn) {
+    closeLoginBtn.addEventListener('click', () => {
+      loginModal.style.display = 'none';
+    });
+  }
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nameVal = nameInput.value.trim();
+      if (!nameVal) return;
+
+      activeOperator = nameVal;
+      localStorage.setItem('qr_active_operator', activeOperator);
+      updateOperatorUI();
+      loginModal.style.display = 'none';
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      activeOperator = '';
+      localStorage.removeItem('qr_active_operator');
+      updateOperatorUI();
+      loginModal.style.display = 'none';
+    });
+  }
+}
+
+// Transmitir escaneos al Servidor Central PC (asociando operador activo)
 async function sendScanToServer(scanData) {
+  const payload = {
+    ...scanData,
+    operador: activeOperator || scanData.operador || 'Operador de Campo'
+  };
+
   if (!navigator.onLine) {
-    addToOfflineQueue('scan', scanData);
+    addToOfflineQueue('scan', payload);
     return;
   }
   try {
     await fetch('/api/scans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(scanData)
+      body: JSON.stringify(payload)
     });
   } catch (e) {
     console.warn("No se pudo transmitir el escaneo al servidor PC, guardando offline:", e);
-    addToOfflineQueue('scan', scanData);
+    addToOfflineQueue('scan', payload);
   }
 }
 
@@ -206,11 +282,17 @@ function initEventLogging() {
   const addEventBtn = document.getElementById('add-event-btn');
   const eventForm = document.getElementById('event-form');
   const cancelEventBtn = document.getElementById('cancel-event-btn');
+  const eventOperatorInput = document.getElementById('event-operator');
 
   if (addEventBtn) {
     addEventBtn.addEventListener('click', () => {
+      if (!activeOperator) {
+        document.getElementById('login-modal').style.display = 'flex';
+        return;
+      }
       document.getElementById('event-modal').style.display = 'flex';
       document.getElementById('event-code-display').innerText = currentScannedCode || 'Muestra';
+      if (eventOperatorInput) eventOperatorInput.value = activeOperator;
     });
   }
 
@@ -223,18 +305,23 @@ function initEventLogging() {
   if (eventForm) {
     eventForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      const opVal = (eventOperatorInput && eventOperatorInput.value.trim()) ? eventOperatorInput.value.trim() : activeOperator || 'Operador de Campo';
+      activeOperator = opVal;
+      localStorage.setItem('qr_active_operator', activeOperator);
+
       const payload = {
         codigo: currentScannedCode,
         tipoEvento: document.getElementById('event-type').value,
         temperatura: document.getElementById('event-temp').value,
         dureza: document.getElementById('event-hardness').value,
         observaciones: document.getElementById('event-obs').value,
-        operador: document.getElementById('event-operator').value || 'Operador de Campo'
+        operador: opVal
       };
 
       if (!navigator.onLine) {
         addToOfflineQueue('event', payload);
-        alert(`¡Evento guardado offline en el celular! Se sincronizará automáticamente al recuperar red.`);
+        alert(`¡Evento guardado offline por ${opVal}! Se sincronizará automáticamente al recuperar red.`);
         document.getElementById('event-modal').style.display = 'none';
         eventForm.reset();
         return;
@@ -249,7 +336,7 @@ function initEventLogging() {
         const data = await res.json();
         if (data.success) {
           const advText = data.preAnalisis?.advertencias ? `\n\n⚠️ Aviso Pre-Análisis: ${data.preAnalisis.advertencias}` : '';
-          alert(`¡Evento de Ensayo registrado para ${currentScannedCode}!${advText}`);
+          alert(`¡Evento de Ensayo registrado por ${opVal} para ${currentScannedCode}!${advText}`);
           document.getElementById('event-modal').style.display = 'none';
           eventForm.reset();
         }
@@ -372,7 +459,6 @@ function initTorch() {
   torchBtn.addEventListener('click', async () => {
     try {
       if (html5QrCode && isScanning) {
-        // Consultar pistas activas del scanner de video
         const videoElement = document.querySelector('#reader video');
         if (videoElement && videoElement.srcObject) {
           const track = videoElement.srcObject.getVideoTracks()[0];
@@ -478,6 +564,7 @@ function onScanSuccess(decodedText) {
   const scanEntry = {
     id: Date.now(),
     text: decodedText,
+    operador: activeOperator || 'Operador de Campo',
     date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   };
 

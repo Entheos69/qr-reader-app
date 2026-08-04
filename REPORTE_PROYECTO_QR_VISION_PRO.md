@@ -19,6 +19,7 @@ En la sesión del **3 de Agosto de 2026 (Fase 4)**, la plataforma evolucionó ha
 4. **Sincronización en Tiempo Real (SSE)**: Transmisión instantánea de datos vía Server-Sent Events desde los celulares en campo al Dashboard de PC.
 5. **Control de Hardware (Linterna/Flash)**: Botón de linterna física para entornos con iluminación deficiente.
 6. **Exportación Estructurada (CSV / TSV / JSON / YAML)**: Formatos de intercambio limpios para importación directa en sistemas LIMS o Excel.
+7. **Seguridad y Autenticación de Operador (Login & Sesión Persistente)**: Modal de inicio de sesión de operador que guarda la identidad del técnico en `localStorage`, asignándola automáticamente a todas las corridas de ensayo y lecturas sin necesidad de definirlo manualmente en cada captura.
 
 ---
 
@@ -26,9 +27,10 @@ En la sesión del **3 de Agosto de 2026 (Fase 4)**, la plataforma evolucionó ha
 
 ```mermaid
 graph TD
-    A[Celular Móvil / PWA Offline] -->|Cámara Ultra Gran Angular / Flash Linterna| B[App Web Cliente / Service Worker]
+    A[Celular Móvil / PWA Offline] -->|Autenticación de Operador / Login| K[Sesión de Técnico Persistente]
+    K -->|Cámara Ultra Gran Angular / Flash Linterna| B[App Web Cliente / Service Worker]
     B -->|Escaneo QR / inducop.mx/r/M04| C[Motor de Caracterización Censo v2.0]
-    B -->|Pre-Análisis Preventivo de Captura| D[Modal de Ensayos / Eventos]
+    B -->|Pre-Análisis Preventivo de Captura| D[Modal de Ensayos / Eventos Autocompletado]
     D -->|Cola Local IndexedDB / Sincronización Network| E[API REST Node.js Server]
     E -->|Validación de Rangos & Cooldown| F[Motor Pre-Análisis Servidor]
     F -->|Persistencia Transaccional| G[(Base de Datos SQLite: qr_vision.db)]
@@ -44,6 +46,7 @@ graph TD
   - Valida tolerancias de temperatura (10°C - 50°C) y dureza (0 - 100 Shore).
   - Detecta ensayos recientes en la misma muestra (<60 min) para evitar duplicados por rebote de escaneo.
 - **Endpoints API REST**:
+  - `POST /api/login`: Registro de inicio de sesión de operador y auditoría.
   - `GET /api/scans` & `POST /api/scans`: Caracterización y registro de escaneos.
   - `DELETE /api/scans/:id` & `DELETE /api/scans`: Limpieza individual o total.
   - `GET /api/events` & `POST /api/events`: Registro de bitácora con flags de pre-análisis.
@@ -54,10 +57,10 @@ graph TD
 
 ### 2. Frontend Móvil PWA (Escáner & Adquisición en Campo)
 - **Ubicación**: `public/index.html`, `public/app.js`, `public/manifest.json`, `public/sw.js`
-- **PWA & Offline First**:
-  - Instalable como app nativa en iOS/Android.
-  - Precaché de app shell y cola local `localStorage`/`IndexedDB` que sincroniza al reconectar.
-  - Indicador de estado de red (`Online` / `Offline`) en vivo.
+- **Autenticación y Sesión de Operador**:
+  - Modal de Login de Técnico/Operador con almacenamiento en `localStorage`.
+  - Auto-asignación de la identidad del operador a todas las capturas y eventos de ensayo.
+  - Botón de gestión de sesión en el encabezado (Iniciar / Cambiar Operador / Cerrar Sesión).
 - **Control de Hardware Móvil**:
   - Selector de cámara **Ultra Gran Angular posterior**.
   - Control de **Linterna / Flash** (`MediaStreamTrack` constraints) para zonas oscuras.
