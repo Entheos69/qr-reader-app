@@ -18,7 +18,17 @@ updated: 2026-08-04
 5. **Regla de 3 intentos**: Si algo falla 3 veces consecutivas, **PARA y pregunta al Guardián**. No iterar a ciegas.
 6. **No emojis en código ni consola**: Windows PowerShell no maneja UTF-8 extendido de forma confiable. Evita emojis en `server.js`, `scripts/` o outputs de consola.
 7. **Incompletitud inherente**: NUNCA declare "no se puede" / "no existe" con certeza absoluta; di qué buscaste y propone verificación experimental.
-8. **Ancla temporal ISO-8601 con offset**: Usar siempre `YYYY-MM-DDTHH:MM±HH:MM` (ej. `2026-08-04T09:22-06:00`), jamás abreviaturas como `CST`.
+8. **Ancla temporal ISO-8601 con offset**: Usar siempre `YYYY-MM-DDTHH:MM±HH:MM` (ej. `2026-08-04T09:28-06:00`), jamás abreviaturas como `CST`.
+
+---
+
+## 📢 Protocolo de Confirmación de Carga
+
+Al cargar o activar este skill (ya sea automáticamente al inicio o por comandos como "alinéate" / "contexto del sistema"), el agente **debe emitir obligatoriamente el siguiente mensaje de confirmación al usuario**:
+
+> **`Contexto del sistema listo`**
+
+Acompañado de la fecha/hora en formato ISO-8601 con offset (`YYYY-MM-DDTHH:MM±HH:MM`) y el estado de los 3 grafos.
 
 ---
 
