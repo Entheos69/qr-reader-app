@@ -104,22 +104,42 @@ async function syncOfflineQueue() {
 
 // DOM Elements Initialization
 document.addEventListener('DOMContentLoaded', () => {
-  lucide.createIcons();
-  
-  fetchCensoCatalog();
-  initNetworkStatus();
-  initOperatorLogin();
-  initTabs();
-  initAudioToggle();
-  initHistory();
-  initGenerator();
-  initScanner();
-  initCaptures();
-  initModal();
-  initSyncWithPC();
-  initEventLogging();
-  initPreAnalysisEngine();
+  if (window.lucide) lucide.createIcons();
+
+  const steps = [
+    { name: 'fetchCensoCatalog', fn: fetchCensoCatalog },
+    { name: 'initNetworkStatus', fn: initNetworkStatus },
+    { name: 'initOperatorLogin', fn: initOperatorLogin },
+    { name: 'initTabs', fn: initTabs },
+    { name: 'initAudioToggle', fn: initAudioToggle },
+    { name: 'initHistory', fn: initHistory },
+    { name: 'initGenerator', fn: initGenerator },
+    { name: 'initScanner', fn: initScanner },
+    { name: 'initCaptures', fn: initCaptures },
+    { name: 'initModal', fn: initModal },
+    { name: 'initSyncWithPC', fn: initSyncWithPC },
+    { name: 'initEventLogging', fn: initEventLogging },
+    { name: 'initPreAnalysisEngine', fn: initPreAnalysisEngine }
+  ];
+
+  steps.forEach(step => {
+    try {
+      step.fn();
+    } catch (err) {
+      console.warn(`[PWA Init Warning] Paso ${step.name} no se completó:`, err);
+    }
+  });
 });
+
+function initSyncWithPC() {
+  const syncBtn = document.getElementById('sync-pc-btn');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', () => {
+      syncOfflineQueue();
+      alert("Sincronización con el servidor ejecutada.");
+    });
+  }
+}
 
 // Autenticación y Sesión de Operador
 function initOperatorLogin() {
@@ -460,14 +480,24 @@ function initAudioToggle() {
 
 // QR Scanner & Multi-Camera Enumeration
 async function initScanner() {
-  html5QrCode = new Html5Qrcode("reader");
-
   const cameraSelect = document.getElementById('camera-select');
+  if (cameraSelect) {
+    cameraSelect.innerHTML = '<option value="">Cámara Principal (Auto)</option>';
+  }
 
   try {
-    camerasList = await Html5Qrcode.getCameras();
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("reader");
+    }
+  } catch (e) {
+    console.warn("Error al inicializar Html5Qrcode:", e);
+  }
+
+  try {
+    const timeoutGetCameras = new Promise((_, reject) => setTimeout(() => reject(new Error("getCameras timeout")), 3000));
+    camerasList = await Promise.race([Html5Qrcode.getCameras(), timeoutGetCameras]);
     
-    if (camerasList && camerasList.length > 0) {
+    if (camerasList && camerasList.length > 0 && cameraSelect) {
       cameraSelect.innerHTML = '';
       
       const savedId = localStorage.getItem('preferred_camera_id');
@@ -475,11 +505,13 @@ async function initScanner() {
 
       if (defaultIndex === -1) {
         defaultIndex = camerasList.findIndex(c => 
-          c.label.toLowerCase().includes('ultra') ||
-          c.label.toLowerCase().includes('wide') ||
-          c.label.toLowerCase().includes('back') || 
-          c.label.toLowerCase().includes('trasera') || 
-          c.label.toLowerCase().includes('environment')
+          c.label && (
+            c.label.toLowerCase().includes('ultra') ||
+            c.label.toLowerCase().includes('wide') ||
+            c.label.toLowerCase().includes('back') || 
+            c.label.toLowerCase().includes('trasera') || 
+            c.label.toLowerCase().includes('environment')
+          )
         );
       }
       if (defaultIndex === -1) defaultIndex = 0;
@@ -487,34 +519,37 @@ async function initScanner() {
       camerasList.forEach((cam, idx) => {
         const option = document.createElement('option');
         option.value = cam.id;
-        option.innerText = cam.label || `Lente Cámara ${idx + 1}`;
+        option.innerText = cam.label || `Cámara ${idx + 1}`;
         if (idx === defaultIndex) option.selected = true;
         cameraSelect.appendChild(option);
       });
 
       selectedCameraId = camerasList[defaultIndex].id;
 
-      cameraSelect.addEventListener('change', async (e) => {
+      cameraSelect.onchange = async (e) => {
         selectedCameraId = e.target.value;
         localStorage.setItem('preferred_camera_id', selectedCameraId);
         await stopScanner();
         startScanner();
-      });
-    } else {
-      cameraSelect.innerHTML = '<option value="">Cámara por defecto</option>';
+      };
     }
   } catch (err) {
-    console.warn("No se pudieron listar las cámaras individualmente:", err);
-    cameraSelect.innerHTML = '<option value="">Cámara del sistema</option>';
+    console.warn("Enumeración diferida de cámaras:", err);
+    if (cameraSelect) {
+      cameraSelect.innerHTML = '<option value="">Cámara Trasera (Auto)</option>';
+    }
   }
 
   initTorch();
   startScanner();
 
-  document.getElementById('restart-scan-btn').addEventListener('click', () => {
-    document.getElementById('restart-scan-btn').style.display = 'none';
-    startScanner();
-  });
+  const restartBtn = document.getElementById('restart-scan-btn');
+  if (restartBtn) {
+    restartBtn.onclick = () => {
+      restartBtn.style.display = 'none';
+      startScanner();
+    };
+  }
 }
 
 function initTorch() {
@@ -522,7 +557,7 @@ function initTorch() {
   if (!torchBtn) return;
 
   torchBtn.style.display = 'inline-flex';
-  torchBtn.addEventListener('click', async () => {
+  torchBtn.onclick = async () => {
     try {
       if (html5QrCode && isScanning) {
         const videoElement = document.querySelector('#reader video');
@@ -533,12 +568,13 @@ function initTorch() {
             if (capabilities.torch || 'torch' in track.getConstraints()) {
               torchActive = !torchActive;
               await track.applyConstraints({ advanced: [{ torch: torchActive }] });
+              const labelEl = document.getElementById('torch-label');
               if (torchActive) {
                 torchBtn.classList.add('btn-torch-active');
-                document.getElementById('torch-label').innerText = 'Linterna ON';
+                if (labelEl) labelEl.innerText = 'Linterna ON';
               } else {
                 torchBtn.classList.remove('btn-torch-active');
-                document.getElementById('torch-label').innerText = 'Linterna OFF';
+                if (labelEl) labelEl.innerText = 'Linterna OFF';
               }
               return;
             }
@@ -550,7 +586,7 @@ function initTorch() {
       console.warn("Error al activar linterna:", e);
       alert("No se pudo alternar la linterna.");
     }
-  });
+  };
 }
 
 async function startScanner() {
@@ -559,11 +595,11 @@ async function startScanner() {
   const overlay = document.getElementById('scanner-overlay');
   const statusText = document.getElementById('status-text');
 
-  overlay.style.display = 'flex';
-  statusText.innerText = "Escaneando...";
+  if (overlay) overlay.style.display = 'flex';
+  if (statusText) statusText.innerText = "Escaneando...";
 
   const config = {
-    fps: 20,
+    fps: 15,
     qrbox: function(w, h) {
       const minEdge = Math.min(w, h);
       const size = Math.floor(minEdge * 0.75);
@@ -586,7 +622,7 @@ async function startScanner() {
     );
     isScanning = true;
   } catch (err) {
-    console.warn("No se pudo iniciar con la cámara seleccionada, usando fallback:", err);
+    console.warn("No se pudo iniciar con la cámara seleccionada, probando facingMode fallback:", err);
     try {
       await html5QrCode.start(
         { facingMode: "environment" },
@@ -596,7 +632,8 @@ async function startScanner() {
       );
       isScanning = true;
     } catch (e) {
-      alert("Por favor concede permisos de cámara en tu navegador.");
+      console.warn("Fallo en fallback de cámara:", e);
+      if (statusText) statusText.innerText = "Haz clic para autorizar cámara";
     }
   }
 }
