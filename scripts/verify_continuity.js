@@ -17,8 +17,9 @@ let warnings = 0;
 let errors = 0;
 
 const SKILL_EPISTEME = path.join(ROOT_DIR, '.agents', 'skills', 'episteme-minimo', 'SKILL.md');
+const SKILL_SEDIMENTAR_CS = path.join(ROOT_DIR, '.agents', 'skills', 'sedimentar-cs', 'SKILL.md');
 
-// 1. Verificar Directivas de Agente y Skill episteme-minimo
+// 1. Verificar Directivas de Agente y Skills
 if (fs.existsSync(AGENTS_FILE)) {
   console.log('✅ AGENTS.md (Directivas de Continuidad Inter-Agente): Presente');
 } else {
@@ -27,9 +28,16 @@ if (fs.existsSync(AGENTS_FILE)) {
 }
 
 if (fs.existsSync(SKILL_EPISTEME)) {
-  console.log('✅ Skill episteme-minimo (.agents/skills/episteme-minimo/SKILL.md): Presente');
+  console.log('✅ Skill episteme-minimo: Presente');
 } else {
   console.log('⚠️ Skill episteme-minimo: No encontrado en .agents/skills/');
+  warnings++;
+}
+
+if (fs.existsSync(SKILL_SEDIMENTAR_CS)) {
+  console.log('✅ Skill sedimentar-cs: Presente');
+} else {
+  console.log('⚠️ Skill sedimentar-cs: No encontrado en .agents/skills/');
   warnings++;
 }
 
