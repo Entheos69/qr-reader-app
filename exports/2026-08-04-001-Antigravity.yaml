@@ -1,0 +1,90 @@
+concept_sediment:
+  session_id: "2026-08-04-001-Antigravity"
+  project: "inducop"
+  date: "2026-08-04"
+  producer: "Antigravity"
+  status: draft
+  domains_active:
+    - workflow_protocols
+    - architecture_decisions
+    - documentation
+
+  summary: |
+    Sesión de formalización e integración del Protocolo de Preservación de Continuidad Inter-Agente
+    y Memoria Transferible. Se incorporó el kit tripartito de habilidades (`episteme-minimo`,
+    `sedimentar-cs` v2 y `consolidar-aec` v2), la especificación del identificador canónico `Antigravity`,
+    el gatillo obligatorio `Prepara cierre de sesión` y la confirmación de alineación `Contexto del sistema listo`.
+
+  concepts:
+    - name: "protocolo de continuidad inter-agente"
+      depth: decision
+      domains:
+        - workflow_protocols
+        - architecture_decisions
+      related_to:
+        - target: "resguardar la memoria es resguardar la INTERPRETABILIDAD, no los datos"
+          relation: derived_from
+          notes: "Gloss-de-target: la continuidad se logra preservando la interpretabilidad en artefactos leíbles y commits semánticos."
+        - target: "la memoria del agente es la capa FRONTERA del grafo, no un anexo suyo"
+          relation: refines
+      notes: |
+        Definición del conjunto de reglas que permite a cualquier instancia de IA o desarrollador
+        asumir el proyecto preservando el rastro de decisiones independientemente de las herramientas efímeras.
+
+    - name: "sedimentacion preventiva de contexto"
+      depth: decision
+      domains:
+        - workflow_protocols
+      related_to:
+        - target: "protocolo de continuidad inter-agente"
+          relation: refines
+      notes: |
+        Mecanismo de resguardo intermedio que se dispara ante sesiones extensas o previo a refactorizaciones
+        complejas para prevenir el desgaste del contexto de ventana o la degradación epistémica.
+
+    - name: "ruteo por tipo de grafo"
+      depth: usage
+      domains:
+        - workflow_protocols
+        - documentation
+      related_to:
+        - target: "Marco Teórico Vivo"
+          relation: derived_from
+          notes: "Gloss-de-target: consulta previa del marco teórico según la naturaleza del dato (Semántico, Catastro, AEC)."
+      notes: |
+        Norma de consulta que exige discriminar entre conceptos (Semántico), documentos (Catastro)
+        e indagaciones web (Ek-Chuah) antes de analizar o programar una solución.
+
+    - name: "mensaje de confirmacion de alineacion"
+      depth: decision
+      domains:
+        - workflow_protocols
+      related_to:
+        - target: "protocolo de continuidad inter-agente"
+          relation: complements
+          notes: "Garantiza al Guardián que la alineación de memoria y los 3 grafos fueron cargados exitosamente al inicio de sesión."
+      notes: |
+        Protocolo que exige emitir 'Contexto del sistema listo' seguido de timestamp ISO-8601 con offset numérico
+        tras el inicio o palabras clave de alineación.
+
+    - name: "independencia de herramientas endemicas"
+      depth: usage
+      domains:
+        - architecture_decisions
+      related_to:
+        - target: "protocolo de continuidad inter-agente"
+          relation: enables
+          notes: "Asegura la degradación elegante a herramientas estándar de lectura y comandos Git si falla un MCP."
+      notes: |
+        Principio de arquitectura local-first que garantiza la operatividad y persistencia del proyecto
+        mediante SQLite nativo y formatos planos universales.
+
+  references:
+    - path: "AGENTS.md"
+      description: "Directivas normativas de continuidad inter-agente del repositorio"
+    - path: ".agents/skills/episteme-minimo/SKILL.md"
+      description: "Skill mínimo de alineación al ecosistema"
+    - path: ".agents/skills/sedimentar-cs/SKILL.md"
+      description: "Skill de emisión de YAML CS v2"
+    - path: ".agents/skills/consolidar-aec/SKILL.md"
+      description: "Skill de emisión de Órdenes de Consolidación YAML AEC v2"
