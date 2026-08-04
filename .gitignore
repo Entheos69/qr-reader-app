@@ -8,3 +8,4 @@ data/qr_vision.db
 data/scans.json
 data/events.json
 exports/
+.gemini/

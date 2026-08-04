@@ -20,6 +20,7 @@ En la sesión del **3 de Agosto de 2026 (Fase 4)**, la plataforma evolucionó ha
 5. **Control de Hardware (Linterna/Flash)**: Botón de linterna física para entornos con iluminación deficiente.
 6. **Exportación Estructurada (CSV / TSV / JSON / YAML)**: Formatos de intercambio limpios para importación directa en sistemas LIMS o Excel.
 7. **Seguridad y Autenticación de Operador (Login & Sesión Persistente)**: Modal de inicio de sesión de operador que guarda la identidad del técnico en `localStorage`, asignándola automáticamente a todas las corridas de ensayo y lecturas sin necesidad de definirlo manualmente en cada captura.
+8. **Protocolo de Preservación de Continuidad Inter-Agente**: Adopción del manifiesto [`AGENTS.md`](file:///c:/Users/ajmon/proyectos/qr_reader/AGENTS.md) y script de auditoría `scripts/verify_continuity.js` para salvaguardar la interpretabilidad, el POR QUÉ de las decisiones y la memoria transferible entre modelos y herramientas.
 
 ---
 
