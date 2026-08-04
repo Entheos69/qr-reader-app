@@ -18,6 +18,7 @@ let errors = 0;
 
 const SKILL_EPISTEME = path.join(ROOT_DIR, '.agents', 'skills', 'episteme-minimo', 'SKILL.md');
 const SKILL_SEDIMENTAR_CS = path.join(ROOT_DIR, '.agents', 'skills', 'sedimentar-cs', 'SKILL.md');
+const SKILL_CONSOLIDAR_AEC = path.join(ROOT_DIR, '.agents', 'skills', 'consolidar-aec', 'SKILL.md');
 
 // 1. Verificar Directivas de Agente y Skills
 if (fs.existsSync(AGENTS_FILE)) {
@@ -35,9 +36,16 @@ if (fs.existsSync(SKILL_EPISTEME)) {
 }
 
 if (fs.existsSync(SKILL_SEDIMENTAR_CS)) {
-  console.log('✅ Skill sedimentar-cs: Presente');
+  console.log('✅ Skill sedimentar-cs (YAML CS v2): Presente');
 } else {
   console.log('⚠️ Skill sedimentar-cs: No encontrado en .agents/skills/');
+  warnings++;
+}
+
+if (fs.existsSync(SKILL_CONSOLIDAR_AEC)) {
+  console.log('✅ Skill consolidar-aec (YAML AEC v2): Presente');
+} else {
+  console.log('⚠️ Skill consolidar-aec: No encontrado en .agents/skills/');
   warnings++;
 }
 
