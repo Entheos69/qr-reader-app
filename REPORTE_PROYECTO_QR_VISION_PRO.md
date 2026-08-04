@@ -114,6 +114,13 @@ graph TD
    - Exportador a archivos CSV y TSV para sistemas LIMS.
    - Commit y push a GitHub (`cbd7ff1`) activando el despliegue automatizado en Railway.
 
+5. **Fase 5: Tolerancias Dinámicas, Evidencia Fotográfica HD & Filtros Avanzados (4 Ago 2026)**
+   - Motor de Pre-Análisis dinámico con tolerancias de temperatura y dureza específicas por objeto del Censo.
+   - Evidencia fotográfica HD comprimida (WebP/JPEG) vinculada a los ensayos en SQLite (`events.foto`).
+   - Visor modal de fotos y badge de telemetría de red SSE en Dashboard PC.
+   - Barra de filtros avanzados por operador, estado de pre-análisis (Advertencia/Verificados) y rango ISO-8601 de fechas con exportación filtrada.
+
+
 ---
 
 ## 📄 Estructura Final del Repositorio
@@ -178,12 +185,15 @@ raw: "https://inducop.mx/r/M04"
 ## 🔒 Bitácora de Cierre de Sesión y Continuidad
 
 ### Sesión `2026-08-04` (Fase 5: Protocolo Inter-Agente y Memoria Transferible)
-- **Producer Canónico**: `Antigravity` (`2026-08-04-001-Antigravity.yaml`).
-- **Gatillo Canónico de Cierre**: Ejecutado mediante el comando `"Prepara cierre de sesión"`.
+- **Producer Canónico**: `Antigravity` (`2026-08-04-001-Antigravity.yaml` y `2026-08-04-002-Antigravity.yaml`).
+- **Gatillo Canónico de Cierre**: Ejecutado mediante la carga de `episteme-minimo` y la sedimentación de características del proyecto.
 - **Artefactos Emitidos & Normativa**:
   - Directivas de repositorio [`AGENTS.md`](file:///c:/Users/ajmon/proyectos/qr_reader/AGENTS.md)
   - Kit de habilidades en `.agents/skills/` ([`episteme-minimo`](file:///.agents/skills/episteme-minimo/SKILL.md), [`sedimentar-cs`](file:///.agents/skills/sedimentar-cs/SKILL.md), [`consolidar-aec`](file:///.agents/skills/consolidar-aec/SKILL.md))
-  - Paquete de sedimentación YAML CS [`exports/2026-08-04-001-Antigravity.yaml`](file:///c:/Users/ajmon/proyectos/qr_reader/exports/2026-08-04-001-Antigravity.yaml)
+  - Paquetes de sedimentación YAML CS:
+    - [`exports/2026-08-04-001-Antigravity.yaml`](file:///c:/Users/ajmon/proyectos/qr_reader/exports/2026-08-04-001-Antigravity.yaml) (Protocolo de Continuidad Inter-Agente)
+    - [`exports/2026-08-04-002-Antigravity.yaml`](file:///c:/Users/ajmon/proyectos/qr_reader/exports/2026-08-04-002-Antigravity.yaml) (Sedimentación de Características y Desarrollo QR Vision Pro)
 - **Estado de Auditoría**: `🚀 CONTINUIDAD Y ESTADO DEL REPOSITORIO EN ORDEN` (`node scripts/verify_continuity.js` OK).
 - **Indagaciones Web AEC**: No se realizaron indagaciones exógenas que requirieran consolidación en el Grafo AEC durante este bloque de trabajo.
+
 

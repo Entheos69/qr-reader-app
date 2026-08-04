@@ -106,6 +106,7 @@ async function syncOfflineQueue() {
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   
+  fetchCensoCatalog();
   initNetworkStatus();
   initOperatorLogin();
   initTabs();
@@ -117,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initModal();
   initSyncWithPC();
   initEventLogging();
-  initPreAnalysisListeners();
+  initPreAnalysisEngine();
 });
 
 // Autenticación y Sesión de Operador
@@ -244,8 +245,8 @@ function initSyncWithPC() {
   });
 }
 
-// Pre-Análisis en Tiempo Real en el Formulario de Captura
-function initPreAnalysisListeners() {
+// Pre-Análisis de Calidad Preventivo con Tolerancias por Objeto
+function initPreAnalysisEngine() {
   const tempInput = document.getElementById('event-temp');
   const hardnessInput = document.getElementById('event-hardness');
   const banner = document.getElementById('pre-analysis-banner');
@@ -255,14 +256,28 @@ function initPreAnalysisListeners() {
 
   function evaluateQuality() {
     const warnings = [];
+    let tempMin = 10, tempMax = 50;
+    let durezaMin = 0, durezaMax = 100;
+
+    if (currentScannedCode) {
+      const codeUpper = String(currentScannedCode).toUpperCase();
+      const objInfo = censoCatalog[codeUpper];
+      if (objInfo && objInfo.tolerancias) {
+        if (typeof objInfo.tolerancias.tempMin === 'number') tempMin = objInfo.tolerancias.tempMin;
+        if (typeof objInfo.tolerancias.tempMax === 'number') tempMax = objInfo.tolerancias.tempMax;
+        if (typeof objInfo.tolerancias.durezaMin === 'number') durezaMin = objInfo.tolerancias.durezaMin;
+        if (typeof objInfo.tolerancias.durezaMax === 'number') durezaMax = objInfo.tolerancias.durezaMax;
+      }
+    }
+
     const tVal = parseFloat(tempInput.value.replace(/[^0-9.-]/g, ''));
-    if (!isNaN(tVal) && (tVal < 10 || tVal > 50)) {
-      warnings.push(`Temperatura fuera de rango (${tVal}°C vs 10-50°C)`);
+    if (!isNaN(tVal) && (tVal < tempMin || tVal > tempMax)) {
+      warnings.push(`Temperatura fuera de norma (${tVal}°C vs ${tempMin}-${tempMax}°C)`);
     }
 
     const hVal = parseFloat(hardnessInput.value.replace(/[^0-9.-]/g, ''));
-    if (!isNaN(hVal) && (hVal < 0 || hVal > 100)) {
-      warnings.push(`Dureza fuera de rango (${hVal} vs 0-100 Shore)`);
+    if (!isNaN(hVal) && (hVal < durezaMin || hVal > durezaMax)) {
+      warnings.push(`Dureza fuera de norma (${hVal} vs ${durezaMin}-${durezaMax} Shore)`);
     }
 
     if (warnings.length > 0) {
@@ -283,6 +298,48 @@ function initEventLogging() {
   const eventForm = document.getElementById('event-form');
   const cancelEventBtn = document.getElementById('cancel-event-btn');
   const eventOperatorInput = document.getElementById('event-operator');
+  const photoInput = document.getElementById('event-photo');
+  const photoPreview = document.getElementById('event-photo-preview');
+  const photoContainer = document.getElementById('event-photo-preview-container');
+
+  if (photoInput) {
+    photoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 600;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          currentBase64Photo = canvas.toDataURL('image/jpeg', 0.65);
+
+          if (photoPreview && photoContainer) {
+            photoPreview.src = currentBase64Photo;
+            photoContainer.style.display = 'block';
+          }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   if (addEventBtn) {
     addEventBtn.addEventListener('click', () => {
@@ -299,6 +356,8 @@ function initEventLogging() {
   if (cancelEventBtn) {
     cancelEventBtn.addEventListener('click', () => {
       document.getElementById('event-modal').style.display = 'none';
+      currentBase64Photo = '';
+      if (photoContainer) photoContainer.style.display = 'none';
     });
   }
 
@@ -316,7 +375,8 @@ function initEventLogging() {
         temperatura: document.getElementById('event-temp').value,
         dureza: document.getElementById('event-hardness').value,
         observaciones: document.getElementById('event-obs').value,
-        operador: opVal
+        operador: opVal,
+        foto: currentBase64Photo
       };
 
       if (!navigator.onLine) {
@@ -324,6 +384,8 @@ function initEventLogging() {
         alert(`¡Evento guardado offline por ${opVal}! Se sincronizará automáticamente al recuperar red.`);
         document.getElementById('event-modal').style.display = 'none';
         eventForm.reset();
+        currentBase64Photo = '';
+        if (photoContainer) photoContainer.style.display = 'none';
         return;
       }
 
@@ -339,12 +401,16 @@ function initEventLogging() {
           alert(`¡Evento de Ensayo registrado por ${opVal} para ${currentScannedCode}!${advText}`);
           document.getElementById('event-modal').style.display = 'none';
           eventForm.reset();
+          currentBase64Photo = '';
+          if (photoContainer) photoContainer.style.display = 'none';
         }
       } catch (err) {
         addToOfflineQueue('event', payload);
         alert("Sin respuesta del servidor. Registro almacenado en cola offline.");
         document.getElementById('event-modal').style.display = 'none';
         eventForm.reset();
+        currentBase64Photo = '';
+        if (photoContainer) photoContainer.style.display = 'none';
       }
     });
   }

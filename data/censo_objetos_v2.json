@@ -6,7 +6,13 @@
     "corrida": "corrida 4",
     "composicion": "93.75 g resina + 56.25 g endurecedor",
     "notas": "cien a sesenta · hilo 55-75 min",
-    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados",
+    "tolerancias": {
+      "tempMin": 15,
+      "tempMax": 40,
+      "durezaMin": 40,
+      "durezaMax": 85
+    }
   },
   "M08": {
     "codigo": "M08",
@@ -14,7 +20,13 @@
     "nombre": "Dispersión arcilla 0 %",
     "corrida": "corrida 8",
     "composicion": "100.00 g resina + 0.00 g arcilla · blanco",
-    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados",
+    "tolerancias": {
+      "tempMin": 18,
+      "tempMax": 35,
+      "durezaMin": 50,
+      "durezaMax": 95
+    }
   },
   "M09": {
     "codigo": "M09",
@@ -23,7 +35,13 @@
     "corrida": "corrida 9",
     "composicion": "99.00 g resina + 1.00 g arcilla",
     "notas": "10 min cizalla máx.",
-    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados",
+    "tolerancias": {
+      "tempMin": 18,
+      "tempMax": 35,
+      "durezaMin": 50,
+      "durezaMax": 95
+    }
   },
   "M10": {
     "codigo": "M10",
@@ -32,7 +50,13 @@
     "corrida": "corrida 10",
     "composicion": "98.00 g resina + 2.00 g arcilla",
     "notas": "10 min cizalla máx.",
-    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados",
+    "tolerancias": {
+      "tempMin": 18,
+      "tempMax": 35,
+      "durezaMin": 50,
+      "durezaMax": 95
+    }
   },
   "M11": {
     "codigo": "M11",
@@ -41,7 +65,13 @@
     "corrida": "corrida 11",
     "composicion": "97.00 g resina + 3.00 g arcilla",
     "notas": "10 min cizalla máx.",
-    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados",
+    "tolerancias": {
+      "tempMin": 18,
+      "tempMax": 35,
+      "durezaMin": 50,
+      "durezaMax": 95
+    }
   },
   "M12": {
     "codigo": "M12",
@@ -49,7 +79,13 @@
     "nombre": "Dispersión 2 % + activador",
     "corrida": "corrida 12",
     "composicion": "98.00 g resina + 2.00 g arcilla + 0.60 g alcohol-agua 95/5 (doméstico)",
-    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados",
+    "tolerancias": {
+      "tempMin": 18,
+      "tempMax": 30,
+      "durezaMin": 55,
+      "durezaMax": 90
+    }
   },
   "M13": {
     "codigo": "M13",
@@ -57,7 +93,13 @@
     "nombre": "Descuelgue 0 %",
     "corrida": "corrida 13",
     "composicion": "50.00 g dispersión M08 + 30.00 g endurecedor",
-    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados"
+    "epp": "EPP: nitrilo + gafas · máx. 200 g concentrados",
+    "tolerancias": {
+      "tempMin": 15,
+      "tempMax": 45,
+      "durezaMin": 45,
+      "durezaMax": 85
+    }
   },
   "M14": {
     "codigo": "M14",

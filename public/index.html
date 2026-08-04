@@ -293,6 +293,14 @@
             <input type="text" id="event-obs" placeholder="ej. Curado a 24h, buena adherencia...">
           </div>
 
+          <div class="input-group">
+            <label>📷 Evidencia Fotográfica HD (Opcional)</label>
+            <input type="file" id="event-photo" accept="image/*" capture="environment" style="padding:8px; background:rgba(10,15,26,0.8); border:1px solid var(--glass-border); color:#fff; border-radius:8px;">
+            <div id="event-photo-preview-container" style="display:none; margin-top:6px; text-align:center;">
+              <img id="event-photo-preview" style="max-width:100%; max-height:120px; border-radius:8px; border:1px solid var(--glass-border); object-fit:contain;">
+            </div>
+          </div>
+
           <!-- Operador Autenticado (Pre-llenado automático) -->
           <div class="input-group">
             <div style="display:flex; justify-content:space-between; align-items:center;">

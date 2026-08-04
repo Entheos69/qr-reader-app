@@ -72,9 +72,15 @@ if (DatabaseSync) {
         timestamp INTEGER,
         date TEXT,
         estadoPreAnalisis TEXT,
-        advertencias TEXT
+        advertencias TEXT,
+        foto TEXT
       );
     `);
+    try {
+      db.exec(`ALTER TABLE events ADD COLUMN foto TEXT`);
+    } catch (e) {
+      // Columna ya existente o tabla recién creada
+    }
     console.log('✅ Base de datos SQLite inicializada exitosamente en:', DB_FILE);
   } catch (e) {
     console.error('Error al configurar SQLite, operando con JSON plano:', e);
@@ -153,13 +159,26 @@ function saveScansToFile() {
 // Pre-Análisis de Calidad en Adquisición de Datos
 function ejecutarPreAnalisisCaptura(payload) {
   const advertencias = [];
-  
+  let tempMin = 10, tempMax = 50;
+  let durezaMin = 0, durezaMax = 100;
+
+  if (payload.codigo) {
+    const codeUpper = String(payload.codigo).toUpperCase();
+    const objInfo = censoData[codeUpper];
+    if (objInfo && objInfo.tolerancias) {
+      if (typeof objInfo.tolerancias.tempMin === 'number') tempMin = objInfo.tolerancias.tempMin;
+      if (typeof objInfo.tolerancias.tempMax === 'number') tempMax = objInfo.tolerancias.tempMax;
+      if (typeof objInfo.tolerancias.durezaMin === 'number') durezaMin = objInfo.tolerancias.durezaMin;
+      if (typeof objInfo.tolerancias.durezaMax === 'number') durezaMax = objInfo.tolerancias.durezaMax;
+    }
+  }
+
   // 1. Validar rango de temperatura (°C) si está presente
   if (payload.temperatura) {
     const tempNum = parseFloat(String(payload.temperatura).replace(/[^0-9.-]/g, ''));
     if (!isNaN(tempNum)) {
-      if (tempNum < 10 || tempNum > 50) {
-        advertencias.push(`Temperatura fuera de tolerancia norma (${tempNum} °C vs 10-50°C)`);
+      if (tempNum < tempMin || tempNum > tempMax) {
+        advertencias.push(`Temperatura fuera de tolerancia norma (${tempNum} °C vs ${tempMin}-${tempMax}°C)`);
       }
     }
   }
@@ -168,8 +187,8 @@ function ejecutarPreAnalisisCaptura(payload) {
   if (payload.dureza) {
     const durezaNum = parseFloat(String(payload.dureza).replace(/[^0-9.-]/g, ''));
     if (!isNaN(durezaNum)) {
-      if (durezaNum < 0 || durezaNum > 100) {
-        advertencias.push(`Valor de dureza incoherente (${durezaNum} Shore vs 0-100)`);
+      if (durezaNum < durezaMin || durezaNum > durezaMax) {
+        advertencias.push(`Valor de dureza fuera de norma (${durezaNum} Shore vs ${durezaMin}-${durezaMax})`);
       }
     }
   }
@@ -206,6 +225,7 @@ function enrichScanWithLatestEvent(scan) {
       dureza: latestEvent.dureza || scan.dureza || '',
       observaciones: latestEvent.observaciones || scan.observaciones || '',
       operador: latestEvent.operador || scan.operador || 'Operador de Campo',
+      foto: latestEvent.foto || scan.foto || '',
       estadoPreAnalisis: latestEvent.estadoPreAnalisis || scan.estadoPreAnalisis || 'OK',
       advertencias: latestEvent.advertencias || scan.advertencias || ''
     };
@@ -442,6 +462,7 @@ const server = http.createServer((req, res) => {
           observaciones: payload.observaciones || '',
           estadoEnsayo: payload.estadoEnsayo || 'En Proceso',
           operador: payload.operador || 'Técnico de Campo',
+          foto: payload.foto || '',
           timestamp: Date.now(),
           date: new Date().toLocaleString(),
           estadoPreAnalisis: preAnalisis.estadoPreAnalisis,
@@ -449,6 +470,35 @@ const server = http.createServer((req, res) => {
         };
         eventsList.unshift(eventEntry);
         saveEventsToFile();
+
+        // Persistir también en SQLite si está activo
+        if (db) {
+          try {
+            const stmt = db.prepare(`
+              INSERT INTO events (id, codigo, tipoEvento, temperatura, humedad, dureza, resistencia, observaciones, estadoEnsayo, operador, timestamp, date, estadoPreAnalisis, advertencias, foto)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            stmt.run(
+              String(eventEntry.id),
+              eventEntry.codigo,
+              eventEntry.tipoEvento,
+              eventEntry.temperatura,
+              eventEntry.humedad,
+              eventEntry.dureza,
+              eventEntry.resistencia,
+              eventEntry.observaciones,
+              eventEntry.estadoEnsayo,
+              eventEntry.operador,
+              eventEntry.timestamp,
+              eventEntry.date,
+              eventEntry.estadoPreAnalisis,
+              eventEntry.advertencias,
+              eventEntry.foto
+            );
+          } catch (errDb) {
+            console.warn('Error al insertar evento en SQLite:', errDb.message);
+          }
+        }
 
         // Actualizar también los datos del evento en la lista de escaneos correspondientes
         const codeUpper = eventEntry.codigo;
@@ -461,6 +511,7 @@ const server = http.createServer((req, res) => {
               dureza: eventEntry.dureza,
               observaciones: eventEntry.observaciones,
               operador: eventEntry.operador,
+              foto: eventEntry.foto,
               estadoPreAnalisis: eventEntry.estadoPreAnalisis,
               advertencias: eventEntry.advertencias
             };

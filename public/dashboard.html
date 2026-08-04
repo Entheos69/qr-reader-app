@@ -270,9 +270,14 @@
         </div>
         <div>
           <h1>INDUPOX · Censo de Objetos Set v2.0</h1>
-          <span class="status-badge">
-            <span class="status-dot"></span> <span>Fase 3: Bitácora & Ensayos de Campo</span>
-          </span>
+          <div style="display:flex; gap:10px; align-items:center; margin-top:4px;">
+            <span class="status-badge">
+              <span class="status-dot"></span> <span>Fase 5: Adquisición & Telemetría en Tiempo Real</span>
+            </span>
+            <div id="sse-status-badge" style="display:inline-flex; align-items:center; gap:6px; background:rgba(34,197,94,0.15); border:1px solid #22c55e; color:#4ade80; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:600;">
+              <span style="width:8px; height:8px; border-radius:50%; background:#22c55e;"></span> <span id="sse-status-text">SSE Conectado</span>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -335,18 +340,43 @@
       </section>
 
       <section class="table-card">
-        <div class="table-toolbar">
-          <div class="search-box">
-            <i data-lucide="search"></i>
-            <input type="text" id="search-input" placeholder="Buscar código (M04, P05), operador, temperatura, dureza...">
+        <!-- Barra de Filtros Avanzada -->
+        <div class="table-toolbar" style="flex-direction: column; align-items: stretch; gap: 12px;">
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="search-input" placeholder="Buscar código (M04, P05), observaciones...">
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <select id="filter-preanalysis" style="padding:8px 12px; background:rgba(10,15,26,0.8); border:1px solid var(--glass-border); color:#fff; border-radius:8px; font-size:0.85rem;">
+                <option value="">Pre-Análisis: Todos</option>
+                <option value="ADVERTENCIA">Solo Advertencias</option>
+                <option value="OK">Solo Verificados</option>
+              </select>
+
+              <select id="filter-operator" style="padding:8px 12px; background:rgba(10,15,26,0.8); border:1px solid var(--glass-border); color:#fff; border-radius:8px; font-size:0.85rem;">
+                <option value="">Operador: Todos</option>
+              </select>
+            </div>
           </div>
 
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button id="refresh-btn" class="btn btn-secondary"><i data-lucide="refresh-cw"></i> Actualizar</button>
-            <button id="export-all-json-btn" class="btn btn-secondary"><i data-lucide="file-json"></i> Exportar JSON</button>
-            <button id="export-all-yaml-btn" class="btn btn-secondary"><i data-lucide="file-code"></i> Exportar YAML</button>
-            <button id="export-all-csv-btn" class="btn btn-secondary"><i data-lucide="file-spreadsheet"></i> Exportar CSV</button>
-            <button id="clear-all-scans-btn" class="btn btn-secondary" style="color: var(--accent-danger);"><i data-lucide="trash-2"></i> Limpiar Todo</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.82rem; color:var(--text-muted);">
+              <span>Filtrar Fecha:</span>
+              <input type="date" id="filter-date-from" style="padding:6px 10px; background:rgba(10,15,26,0.8); border:1px solid var(--glass-border); color:#fff; border-radius:6px; font-size:0.8rem;">
+              <span>a</span>
+              <input type="date" id="filter-date-to" style="padding:6px 10px; background:rgba(10,15,26,0.8); border:1px solid var(--glass-border); color:#fff; border-radius:6px; font-size:0.8rem;">
+              <button id="clear-filters-btn" class="btn btn-secondary" style="padding:4px 8px; font-size:0.75rem;"><i data-lucide="x"></i> Limpiar Filtros</button>
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button id="refresh-btn" class="btn btn-secondary"><i data-lucide="refresh-cw"></i> Actualizar</button>
+              <button id="export-all-json-btn" class="btn btn-secondary"><i data-lucide="file-json"></i> Exportar JSON</button>
+              <button id="export-all-yaml-btn" class="btn btn-secondary"><i data-lucide="file-code"></i> Exportar YAML</button>
+              <button id="export-all-csv-btn" class="btn btn-secondary"><i data-lucide="file-spreadsheet"></i> Exportar CSV</button>
+              <button id="clear-all-scans-btn" class="btn btn-secondary" style="color: var(--accent-danger);"><i data-lucide="trash-2"></i> Limpiar Todo</button>
+            </div>
           </div>
         </div>
 
@@ -450,9 +480,6 @@
       initNavTabs();
       fetchCatalog();
       fetchScans();
-      initNavTabs();
-      fetchCatalog();
-      fetchScans();
       initSSE();
 
       document.getElementById('refresh-btn').addEventListener('click', fetchScans);
@@ -462,20 +489,51 @@
       document.getElementById('clear-all-scans-btn').addEventListener('click', clearAllScans);
       document.getElementById('pick-dir-btn').addEventListener('click', handlePickDirectory);
 
+      // Event listeners para barra de filtros
+      ['search-input', 'filter-preanalysis', 'filter-operator', 'filter-date-from', 'filter-date-to'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', renderTable);
+        if (el) el.addEventListener('change', renderTable);
+      });
+
+      const clearFiltersBtn = document.getElementById('clear-filters-btn');
+      if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+          document.getElementById('search-input').value = '';
+          document.getElementById('filter-preanalysis').value = '';
+          document.getElementById('filter-operator').value = '';
+          document.getElementById('filter-date-from').value = '';
+          document.getElementById('filter-date-to').value = '';
+          renderTable();
+        });
+      }
+
       document.getElementById('catalog-form').addEventListener('submit', handleSaveCatalogItem);
       document.getElementById('generate-pdf-btn').addEventListener('click', renderPdfSheetAndPrint);
     });
 
     function initSSE() {
+      const statusText = document.getElementById('sse-status-text');
+      const statusBadge = document.getElementById('sse-status-badge');
+
       try {
         const evtSource = new EventSource('/api/stream');
+        evtSource.onopen = () => {
+          if (statusText) statusText.innerText = 'SSE Conectado';
+          if (statusBadge) statusBadge.style.borderColor = '#22c55e';
+        };
         evtSource.onmessage = () => fetchScans();
         evtSource.addEventListener('scan_added', fetchScans);
         evtSource.addEventListener('event_added', fetchScans);
         evtSource.addEventListener('scan_deleted', fetchScans);
         evtSource.addEventListener('scan_deleted_all', fetchScans);
+        evtSource.onerror = () => {
+          if (statusText) statusText.innerText = 'Reconectando SSE...';
+          if (statusBadge) statusBadge.style.borderColor = '#eab308';
+        };
       } catch (e) {
         console.warn("SSE no disponible, usando polling:", e);
+        if (statusText) statusText.innerText = 'Polling Activo';
         setInterval(fetchScans, 4000);
       }
     }
@@ -527,10 +585,27 @@
         const res = await fetch('/api/scans');
         allScans = await res.json();
         updateKPIs();
+        updateOperatorFilterOptions();
         renderTable();
       } catch (err) {
         console.error("Error al cargar escaneos:", err);
       }
+    }
+
+    function updateOperatorFilterOptions() {
+      const select = document.getElementById('filter-operator');
+      if (!select) return;
+      const currentVal = select.value;
+      const operators = new Set();
+
+      allScans.forEach(s => {
+        if (s.operador && s.operador.trim()) {
+          operators.add(s.operador.trim());
+        }
+      });
+
+      select.innerHTML = '<option value="">Operador: Todos</option>' + 
+        Array.from(operators).map(op => `<option value="${escapeHtml(op)}"${op === currentVal ? ' selected' : ''}>${escapeHtml(op)}</option>`).join('');
     }
 
     function updateKPIs() {
@@ -542,17 +617,42 @@
       document.getElementById('kpi-identidad').innerText = identidad;
     }
 
+    function getFilteredScans() {
+      const query = (document.getElementById('search-input').value || '').toLowerCase().trim();
+      const preFilter = document.getElementById('filter-preanalysis').value;
+      const opFilter = document.getElementById('filter-operator').value;
+      const dateFromStr = document.getElementById('filter-date-from').value;
+      const dateToStr = document.getElementById('filter-date-to').value;
+
+      const dateFrom = dateFromStr ? new Date(dateFromStr + 'T00:00:00').getTime() : null;
+      const dateTo = dateToStr ? new Date(dateToStr + 'T23:59:59').getTime() : null;
+
+      return allScans.filter(s => {
+        // Texto general
+        const textToSearch = `${s.codigo} ${s.nombre} ${s.composicion} ${s.tipo} ${s.temperatura} ${s.dureza} ${s.observaciones} ${s.operador} ${s.raw}`.toLowerCase();
+        if (query && !textToSearch.includes(query)) return false;
+
+        // Pre-análisis
+        if (preFilter && s.estadoPreAnalisis !== preFilter) return false;
+
+        // Operador
+        if (opFilter && s.operador !== opFilter) return false;
+
+        // Rango de fechas
+        const scanTs = Number(s.timestamp) || 0;
+        if (dateFrom && scanTs < dateFrom) return false;
+        if (dateTo && scanTs > dateTo) return false;
+
+        return true;
+      });
+    }
+
     function renderTable() {
       const body = document.getElementById('table-body');
-      const query = (document.getElementById('search-input').value || '').toLowerCase().trim();
-
-      const filtered = allScans.filter(s => {
-        const textToSearch = `${s.codigo} ${s.nombre} ${s.composicion} ${s.tipo} ${s.temperatura} ${s.dureza} ${s.observaciones} ${s.operador} ${s.raw}`.toLowerCase();
-        return !query || textToSearch.includes(query);
-      });
+      const filtered = getFilteredScans();
 
       if (filtered.length === 0) {
-        body.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No hay lecturas registradas aún.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No hay lecturas que coincidan con los filtros aplicados.</td></tr>`;
         return;
       }
 
@@ -566,7 +666,7 @@
           ? `<span class="pre-analysis-tag-warn" title="${escapeHtml(s.advertencias || '')}">⚠️ Advertencia</span>`
           : `<span class="pre-analysis-tag-ok">✓ Verificado</span>`;
 
-        const hasEvent = s.temperatura || s.dureza || s.observaciones || s.operador;
+        const hasEvent = s.temperatura || s.dureza || s.observaciones || s.operador || s.foto;
 
         return `
           <tr>
@@ -579,9 +679,10 @@
             <td>${preTag}${s.advertencias ? `<div style="font-size:0.75rem; color:#fef08a;">${escapeHtml(s.advertencias)}</div>` : ''}</td>
             <td>
               ${hasEvent ? `
-                <div style="font-size: 0.82rem; color: #fff;">
+                <div style="font-size: 0.82rem; color: #fff; display:flex; gap:8px; align-items:center;">
                   ${s.temperatura ? `<span>🌡️ <strong>${escapeHtml(s.temperatura)}°C</strong></span> ` : ''}
                   ${s.dureza ? `<span>🧪 <strong>${escapeHtml(s.dureza)}</strong></span>` : ''}
+                  ${s.foto ? `<button class="action-btn" onclick="viewPhotoModal('${s.id}')" style="padding:2px 8px; font-size:0.75rem; border-color:var(--accent-secondary); color:var(--accent-secondary);" title="Ver Evidencia Fotográfica HD">📷 Foto HD</button>` : ''}
                 </div>
                 ${s.observaciones ? `<div style="font-size: 0.78rem; color: var(--text-muted);">💬 ${escapeHtml(s.observaciones)}</div>` : ''}
                 ${s.operador ? `<small style="color: var(--accent-primary);">👤 ${escapeHtml(s.operador)}</small>` : ''}
@@ -608,6 +709,21 @@
       lucide.createIcons();
     }
 
+    function viewPhotoModal(scanId) {
+      const item = allScans.find(s => String(s.id) === String(scanId));
+      if (!item || !item.foto) return;
+
+      const img = document.getElementById('photo-modal-img');
+      if (img) img.src = item.foto;
+      const modal = document.getElementById('photo-modal');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closePhotoModal() {
+      const modal = document.getElementById('photo-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
     // Exportar un renglón individual con todos los campos de bitácora
     async function exportRow(scanId, format) {
       const scanItem = allScans.find(s => String(s.id) === String(scanId));
@@ -622,17 +738,18 @@
       await saveToDestinationFolderOrBrowser(cleanData, filename, isYaml);
     }
 
-    // Exportar lote completo con todos los campos de bitácora
+    // Exportar lote filtrado con todos los campos de bitácora
     async function exportAll(format) {
-      if (allScans.length === 0) {
-        alert("No hay lecturas registradas para exportar.");
+      const itemsToExport = getFilteredScans();
+      if (itemsToExport.length === 0) {
+        alert("No hay lecturas registradas o coincidentes con los filtros para exportar.");
         return;
       }
 
       const isYaml = format === 'yaml';
-      const filename = `censo_indupox_lote_completo_${Date.now()}.${isYaml ? 'yaml' : 'json'}`;
+      const filename = `censo_indupox_lote_${Date.now()}.${isYaml ? 'yaml' : 'json'}`;
 
-      const fullDataset = allScans.map(buildFullRecordObject);
+      const fullDataset = itemsToExport.map(buildFullRecordObject);
       await saveToDestinationFolderOrBrowser(fullDataset, filename, isYaml);
     }
 
@@ -851,5 +968,21 @@
       });
     }
   </script>
+
+  <!-- Modal de Evidencia Fotográfica HD -->
+  <div id="photo-modal" class="modal-overlay" style="display: none;" onclick="closePhotoModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 640px;">
+      <div class="modal-header">
+        <div class="modal-icon success">
+          <i data-lucide="image"></i>
+        </div>
+        <h3>Evidencia Fotográfica HD</h3>
+        <button onclick="closePhotoModal()" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center; padding: 16px;">
+        <img id="photo-modal-img" style="max-width: 100%; max-height: 75vh; border-radius: 8px; border: 1px solid var(--glass-border); object-fit: contain;">
+      </div>
+    </div>
+  </div>
 </body>
 </html>
