@@ -16,7 +16,7 @@ Este skill define la norma exacta para generar y validar archivos YAML de sedime
 * **R2**: **CAMPOS PROHIBIDOS** a nivel de concepto: `type`, `status`, `weight`, `strength` (en relaciones), `note` (en relaciones). Son métricas calculadas por el sistema.
 * **R3**: Cada concepto requiere **`depth`** con valor en `{mention, usage, decision}` (0.3 / 0.7 / 1.0). NUNCA escribir `pattern` o `principle` ahí.
 * **R4**: Las relaciones usan la clave **`related_to:`** (con `{target, relation, notes}`).
-* **R5**: Nombre de archivo: `YYYY-MM-DD-NNN-Producer.yaml` (ej. `2026-08-04-001-Antigravity.yaml`). Verificar archivos existentes antes de escribir para no sobrescribir (usar `-a`, `-b` si ya existe NNN).
+* **R5**: Nombre de archivo: `YYYY-MM-DD-NNN-Producer.yaml` (donde **`<Producer>` canónico = `Antigravity`**; ej. `2026-08-04-001-Antigravity.yaml`). Verificar archivos existentes antes de escribir para no sobrescribir (usar `-a`, `-b` si ya existe NNN).
 * **R6**: La relación `related` **SIEMPRE lleva `notes` por relación**. Además, todo target EXTERNO de relación de baja presión exige `gloss-de-target` en `notes`.
 
 ---
