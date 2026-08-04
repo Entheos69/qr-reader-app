@@ -1,6 +1,6 @@
 ---
 name: episteme-minimo
-description: Kit mínimo de alineación al sistema poli-agente del Guardián (INDUCOP, Flujo Tripartito, los tres grafos, MTV, directivas de continuidad). Usar SIEMPRE al arrancar sin contexto previo del ecosistema, al recibir un handoff/SOL, o cuando el Guardián diga "carga el sistema", "alinéate", "contexto del sistema".
+description: Kit mínimo de alineación al sistema poli-agente del Guardián (INDUCOP, Flujo Tripartito, los tres grafos, MTV, directivas de continuidad). Usar SIEMPRE al arrancar sin contexto previo del ecosistema, al recibir un handoff/SOL, o cuando el Guardián diga "carga el sistema", "alinéate", "contexto del sistema", "prepara cierre de sesión".
 updated: 2026-08-04
 ---
 
@@ -18,7 +18,7 @@ updated: 2026-08-04
 5. **Regla de 3 intentos**: Si algo falla 3 veces consecutivas, **PARA y pregunta al Guardián**. No iterar a ciegas.
 6. **No emojis en código ni consola**: Windows PowerShell no maneja UTF-8 extendido de forma confiable. Evita emojis en `server.js`, `scripts/` o outputs de consola.
 7. **Incompletitud inherente**: NUNCA declare "no se puede" / "no existe" con certeza absoluta; di qué buscaste y propone verificación experimental.
-8. **Ancla temporal ISO-8601 con offset**: Usar siempre `YYYY-MM-DDTHH:MM±HH:MM` (ej. `2026-08-04T09:28-06:00`), jamás abreviaturas como `CST`.
+8. **Ancla temporal ISO-8601 con offset**: Usar siempre `YYYY-MM-DDTHH:MM±HH:MM` (ej. `2026-08-04T09:45-06:00`), jamás abreviaturas como `CST`.
 
 ---
 
@@ -32,6 +32,22 @@ Acompañado de la fecha/hora en formato ISO-8601 con offset (`YYYY-MM-DDTHH:MM±
 
 ---
 
+## 🛑 Protocolo de Cierre: Gatillo Canónico "Prepara cierre de sesión"
+
+El comando **`"Prepara cierre de sesión"`** es el gatillo canónico que dispara forzosamente:
+1. **Evaluación y Emisión de YAML CS (`sedimentar-cs`)**: Generar el archivo `YYYY-MM-DD-NNN-Antigravity.yaml` para el Grafo Semántico.
+2. **Evaluación y Emisión de YAML AEC (`consolidar-aec`)**: Generar la Orden de Consolidación `YYYY-MM-DD-NNN-Indagacion.yaml` para el Grafo Ek-Chuah si existieron indagaciones web durables.
+3. **Auditoría de Integridad**: Ejecución de `node scripts/verify_continuity.js`.
+4. **Actualización de Memoria Transferible**: Actualizar `REPORTE_PROYECTO_QR_VISION_PRO.md` e hito `git commit`.
+
+### ⚡ Sedimentación Preventiva (Anti-Degradación Epistémica)
+Se dispara también si:
+- La sesión se vuelve excesivamente extensa (riesgo de truncamiento o saturación de ventana de contexto).
+- Se va a iniciar una reestructuración o proceso técnico complejo que pudiera degradar el contexto de trabajo.
+- En estos casos, el agente **debe proponer o ejecutar una sedimentación intermedia** antes de avanzar.
+
+---
+
 ## 🛠️ Herramientas y Ruteo por Tipo
 
 | Tipo de Conocimiento | Grafo / Fuente | Herramienta Antigravity |
@@ -40,13 +56,3 @@ Acompañado de la fecha/hora en formato ISO-8601 con offset (`YYYY-MM-DDTHH:MM±
 | **Documentos / Acervo / Afirmaciones** | Catastro (`docs_inducop`) | `grep_search`, `view_file` |
 | **Hallazgos Web / Investigaciones** | Ek-Chuah (`AEC`) | `call_mcp_tool` (`aec_search`, `aec_get_via`) |
 | **Código & Datos de Adquisición** | Repositorio Local (`qr_reader`) | `view_file`, `replace_file_content`, `run_command` |
-
----
-
-## 📄 Protocolo de Cierre e Hitos
-
-En cada cierre de sesión o hito técnico:
-1. Re-evaluar los conceptos trabajados.
-2. Ejecutar `node scripts/verify_continuity.js` para auditar la integridad de la base de datos SQLite y el censo.
-3. Registrar en Git mediante `git commit` declarando el **POR QUÉ** en la primera línea del mensaje.
-4. Actualizar `REPORTE_PROYECTO_QR_VISION_PRO.md` como la capa frontera de memoria transferible.
