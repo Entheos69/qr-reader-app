@@ -16,12 +16,21 @@ console.log('----------------------------------------------------');
 let warnings = 0;
 let errors = 0;
 
-// 1. Verificar Directivas de Agente
+const SKILL_EPISTEME = path.join(ROOT_DIR, '.agents', 'skills', 'episteme-minimo', 'SKILL.md');
+
+// 1. Verificar Directivas de Agente y Skill episteme-minimo
 if (fs.existsSync(AGENTS_FILE)) {
   console.log('✅ AGENTS.md (Directivas de Continuidad Inter-Agente): Presente');
 } else {
   console.log('❌ AGENTS.md: Falta en la raíz del proyecto');
   errors++;
+}
+
+if (fs.existsSync(SKILL_EPISTEME)) {
+  console.log('✅ Skill episteme-minimo (.agents/skills/episteme-minimo/SKILL.md): Presente');
+} else {
+  console.log('⚠️ Skill episteme-minimo: No encontrado en .agents/skills/');
+  warnings++;
 }
 
 // 2. Verificar Reporte Vivo del Proyecto
