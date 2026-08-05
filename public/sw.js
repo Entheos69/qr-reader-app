@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qr-vision-v2.0-fresh';
+const CACHE_NAME = 'qr-vision-v2.1-fresh';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

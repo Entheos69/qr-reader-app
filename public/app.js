@@ -21,6 +21,28 @@ let audioEnabled = true;
 let isScanning = false;
 let currentScannedCode = null;
 let torchActive = false;
+let censoCatalog = {};
+let currentBase64Photo = '';
+
+// Safe DOM Helpers
+function getEl(id) {
+  return document.getElementById(id);
+}
+
+function setDisplay(id, displayVal) {
+  const el = getEl(id);
+  if (el) el.style.display = displayVal;
+}
+
+function setInnerText(id, textVal) {
+  const el = getEl(id);
+  if (el) el.innerText = textVal;
+}
+
+function getVal(id) {
+  const el = getEl(id);
+  return el ? el.value : '';
+}
 
 // Web Audio API Beep Generator
 function playBeepSound() {
@@ -54,7 +76,7 @@ function triggerVibration() {
 
 // Network Status & Offline Synchronization
 function initNetworkStatus() {
-  const badge = document.getElementById('network-badge');
+  const badge = getEl('network-badge');
   if (!badge) return;
 
   function updateStatus() {
@@ -64,7 +86,7 @@ function initNetworkStatus() {
       syncOfflineQueue();
     } else {
       badge.className = 'badge-offline';
-      badge.innerText = 'Offline';
+      badge.innerText = offlineQueue.length > 0 ? `Offline (${offlineQueue.length} pend)` : 'Offline';
     }
   }
 
@@ -77,6 +99,10 @@ function initNetworkStatus() {
 function addToOfflineQueue(type, payload) {
   offlineQueue.push({ type, payload, timestamp: Date.now() });
   localStorage.setItem('qr_offline_queue', JSON.stringify(offlineQueue));
+  const badge = getEl('network-badge');
+  if (badge && !navigator.onLine) {
+    badge.innerText = `Offline (${offlineQueue.length} pend)`;
+  }
 }
 
 async function syncOfflineQueue() {
@@ -100,6 +126,11 @@ async function syncOfflineQueue() {
       offlineQueue.push(item);
       localStorage.setItem('qr_offline_queue', JSON.stringify(offlineQueue));
     }
+  }
+
+  const badge = getEl('network-badge');
+  if (badge && navigator.onLine) {
+    badge.innerText = 'Online';
   }
 }
 
@@ -133,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initSyncWithPC() {
-  const syncBtn = document.getElementById('sync-pc-btn');
+  const syncBtn = getEl('sync-pc-btn');
   if (syncBtn) {
     syncBtn.addEventListener('click', () => {
       syncOfflineQueue();
@@ -144,29 +175,32 @@ function initSyncWithPC() {
 
 // Autenticación y Sesión de Operador
 function initOperatorLogin() {
-  const sessionBtn = document.getElementById('operator-session-btn');
-  const nameDisplay = document.getElementById('operator-name-display');
-  const loginModal = document.getElementById('login-modal');
-  const closeLoginBtn = document.getElementById('close-login-btn');
-  const loginForm = document.getElementById('login-form');
-  const nameInput = document.getElementById('login-operator-name');
-  const logoutBtn = document.getElementById('logout-operator-btn');
-  const changeOpLink = document.getElementById('change-operator-link');
+  const sessionBtn = getEl('operator-session-btn');
+  const nameDisplay = getEl('operator-name-display');
+  const closeLoginBtn = getEl('close-login-btn');
+  const loginForm = getEl('login-form');
+  const nameInput = getEl('login-operator-name');
+  const logoutBtn = getEl('logout-operator-btn');
+  const changeOpLink = getEl('change-operator-link');
 
   function updateOperatorUI() {
     if (activeOperator) {
-      nameDisplay.innerText = activeOperator.length > 12 ? activeOperator.substring(0, 10) + '..' : activeOperator;
-      sessionBtn.classList.remove('btn-secondary');
-      sessionBtn.classList.add('badge-online');
-      sessionBtn.style.color = '#fff';
+      if (nameDisplay) nameDisplay.innerText = activeOperator.length > 12 ? activeOperator.substring(0, 10) + '..' : activeOperator;
+      if (sessionBtn) {
+        sessionBtn.classList.remove('btn-secondary');
+        sessionBtn.classList.add('badge-online');
+        sessionBtn.style.color = '#fff';
+      }
       if (logoutBtn) logoutBtn.style.display = 'block';
     } else {
-      nameDisplay.innerText = 'Ingresar';
-      sessionBtn.classList.remove('badge-online');
-      sessionBtn.classList.add('btn-secondary');
+      if (nameDisplay) nameDisplay.innerText = 'Ingresar';
+      if (sessionBtn) {
+        sessionBtn.classList.remove('badge-online');
+        sessionBtn.classList.add('btn-secondary');
+      }
       if (logoutBtn) logoutBtn.style.display = 'none';
     }
-    const eventOperatorInput = document.getElementById('event-operator');
+    const eventOperatorInput = getEl('event-operator');
     if (eventOperatorInput) {
       eventOperatorInput.value = activeOperator;
     }
@@ -176,7 +210,7 @@ function initOperatorLogin() {
 
   function openLogin() {
     if (nameInput) nameInput.value = activeOperator;
-    loginModal.style.display = 'flex';
+    setDisplay('login-modal', 'flex');
   }
 
   if (sessionBtn) sessionBtn.addEventListener('click', openLogin);
@@ -184,20 +218,20 @@ function initOperatorLogin() {
 
   if (closeLoginBtn) {
     closeLoginBtn.addEventListener('click', () => {
-      loginModal.style.display = 'none';
+      setDisplay('login-modal', 'none');
     });
   }
 
   if (loginForm) {
     loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const nameVal = nameInput.value.trim();
+      const nameVal = nameInput ? nameInput.value.trim() : '';
       if (!nameVal) return;
 
       activeOperator = nameVal;
       localStorage.setItem('qr_active_operator', activeOperator);
       updateOperatorUI();
-      loginModal.style.display = 'none';
+      setDisplay('login-modal', 'none');
     });
   }
 
@@ -206,7 +240,7 @@ function initOperatorLogin() {
       activeOperator = '';
       localStorage.removeItem('qr_active_operator');
       updateOperatorUI();
-      loginModal.style.display = 'none';
+      setDisplay('login-modal', 'none');
     });
   }
 }
@@ -220,133 +254,116 @@ async function sendScanToServer(scanData) {
 
   if (!navigator.onLine) {
     addToOfflineQueue('scan', payload);
+    console.log("[Offline Queue] Escaneo guardado en cola local");
     return;
   }
+
   try {
-    await fetch('/api/scans', {
+    const res = await fetch('/api/scans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-  } catch (e) {
-    console.warn("No se pudo transmitir el escaneo al servidor PC, guardando offline:", e);
+    const data = await res.json();
+    console.log("Respuesta del servidor PC:", data);
+  } catch (err) {
+    console.warn("Error al enviar escaneo al servidor PC, reencolando offline:", err);
     addToOfflineQueue('scan', payload);
   }
 }
 
-// Sincronizar todo el historial guardado en el Celular hacia la PC
-function initSyncWithPC() {
-  const syncBtn = document.getElementById('sync-pc-btn');
-  if (!syncBtn) return;
-
-  syncBtn.addEventListener('click', async () => {
-    if (scanHistory.length === 0 && offlineQueue.length === 0) {
-      alert("No hay lecturas en la cola para sincronizar.");
-      return;
-    }
-
-    syncBtn.innerHTML = `<i data-lucide="loader"></i> Sincronizando...`;
-    lucide.createIcons();
-
-    try {
-      await syncOfflineQueue();
-      const res = await fetch('/api/scans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(scanHistory)
-      });
-      const data = await res.json();
-      alert(`¡Sincronización Exitosa! ${data.added || 0} lecturas procesadas en el servidor.`);
-    } catch (e) {
-      alert("Operando en modo offline o sin respuesta del servidor.");
-    } finally {
-      syncBtn.innerHTML = `<i data-lucide="refresh-cw"></i> Sincronizar Cola Offline / Servidor`;
-      lucide.createIcons();
-    }
-  });
+// Censo & Pre-Análisis Data Fetching
+async function fetchCensoCatalog() {
+  try {
+    const res = await fetch('/api/censo');
+    censoCatalog = await res.json();
+  } catch (e) {
+    console.warn("Catálogo censo local no disponible de inmediato:", e);
+  }
 }
 
-// Pre-Análisis de Calidad Preventivo con Tolerancias por Objeto
-function initPreAnalysisEngine() {
-  const tempInput = document.getElementById('event-temp');
-  const hardnessInput = document.getElementById('event-hardness');
-  const banner = document.getElementById('pre-analysis-banner');
-  const msgSpan = document.getElementById('pre-analysis-msg');
+// Pre-Analysis UI Evaluator
+function evaluatePreAnalysisUI() {
+  const code = currentScannedCode;
+  const tempVal = getVal('event-temp');
+  const hardnessVal = getVal('event-hardness');
+  const warnContainer = getEl('preanalysis-warning-box');
 
-  if (!tempInput || !hardnessInput || !banner) return;
+  if (!warnContainer) return;
 
-  function evaluateQuality() {
-    const warnings = [];
-    let tempMin = 10, tempMax = 50;
-    let durezaMin = 0, durezaMax = 100;
+  if (!code) {
+    warnContainer.style.display = 'none';
+    return;
+  }
 
-    if (currentScannedCode) {
-      const codeUpper = String(currentScannedCode).toUpperCase();
-      const objInfo = censoCatalog[codeUpper];
-      if (objInfo && objInfo.tolerancias) {
-        if (typeof objInfo.tolerancias.tempMin === 'number') tempMin = objInfo.tolerancias.tempMin;
-        if (typeof objInfo.tolerancias.tempMax === 'number') tempMax = objInfo.tolerancias.tempMax;
-        if (typeof objInfo.tolerancias.durezaMin === 'number') durezaMin = objInfo.tolerancias.durezaMin;
-        if (typeof objInfo.tolerancias.durezaMax === 'number') durezaMax = objInfo.tolerancias.durezaMax;
-      }
+  const codeUpper = String(code).toUpperCase();
+  const objInfo = censoCatalog[codeUpper];
+  let tempMin = 10, tempMax = 50;
+  let durezaMin = 0, durezaMax = 100;
+
+  if (objInfo && objInfo.tolerancias) {
+    if (typeof objInfo.tolerancias.tempMin === 'number') tempMin = objInfo.tolerancias.tempMin;
+    if (typeof objInfo.tolerancias.tempMax === 'number') tempMax = objInfo.tolerancias.tempMax;
+    if (typeof objInfo.tolerancias.durezaMin === 'number') durezaMin = objInfo.tolerancias.durezaMin;
+    if (typeof objInfo.tolerancias.durezaMax === 'number') durezaMax = objInfo.tolerancias.durezaMax;
+  }
+
+  const advertencias = [];
+  if (tempVal) {
+    const tNum = parseFloat(String(tempVal).replace(/[^0-9.-]/g, ''));
+    if (!isNaN(tNum) && (tNum < tempMin || tNum > tempMax)) {
+      advertencias.push(`Temperatura ${tNum}°C fuera del rango (${tempMin}-${tempMax}°C)`);
     }
-
-    const tVal = parseFloat(tempInput.value.replace(/[^0-9.-]/g, ''));
-    if (!isNaN(tVal) && (tVal < tempMin || tVal > tempMax)) {
-      warnings.push(`Temperatura fuera de norma (${tVal}°C vs ${tempMin}-${tempMax}°C)`);
-    }
-
-    const hVal = parseFloat(hardnessInput.value.replace(/[^0-9.-]/g, ''));
-    if (!isNaN(hVal) && (hVal < durezaMin || hVal > durezaMax)) {
-      warnings.push(`Dureza fuera de norma (${hVal} vs ${durezaMin}-${durezaMax} Shore)`);
-    }
-
-    if (warnings.length > 0) {
-      banner.style.display = 'block';
-      msgSpan.innerText = ' ⚠️ Pre-Análisis: ' + warnings.join(' | ');
-    } else {
-      banner.style.display = 'none';
+  }
+  if (hardnessVal) {
+    const hNum = parseFloat(String(hardnessVal).replace(/[^0-9.-]/g, ''));
+    if (!isNaN(hNum) && (hNum < durezaMin || hNum > durezaMax)) {
+      advertencias.push(`Dureza ${hNum} Shore fuera del rango (${durezaMin}-${durezaMax} Shore)`);
     }
   }
 
-  tempInput.addEventListener('input', evaluateQuality);
-  hardnessInput.addEventListener('input', evaluateQuality);
+  if (advertencias.length > 0) {
+    warnContainer.innerHTML = `⚠️ <strong>Aviso Pre-Análisis:</strong><br>${advertencias.join('<br>')}`;
+    warnContainer.style.display = 'block';
+  } else {
+    warnContainer.style.display = 'none';
+  }
 }
 
-// Registro de Eventos y Mediciones de Ensayos desde el Celular
+function initPreAnalysisEngine() {
+  const tempInput = getEl('event-temp');
+  const hardnessInput = getEl('event-hardness');
+
+  if (tempInput) tempInput.addEventListener('input', evaluatePreAnalysisUI);
+  if (hardnessInput) hardnessInput.addEventListener('input', evaluatePreAnalysisUI);
+}
+
+// Bitácora de Eventos de Ensayo
 function initEventLogging() {
-  const addEventBtn = document.getElementById('add-event-btn');
-  const eventForm = document.getElementById('event-form');
-  const cancelEventBtn = document.getElementById('cancel-event-btn');
-  const eventOperatorInput = document.getElementById('event-operator');
-  const photoInput = document.getElementById('event-photo');
-  const photoPreview = document.getElementById('event-photo-preview');
-  const photoContainer = document.getElementById('event-photo-preview-container');
+  const addEventBtn = getEl('add-event-btn');
+  const cancelEventBtn = getEl('cancel-event-btn');
+  const eventForm = getEl('event-form');
+  const eventOperatorInput = getEl('event-operator');
+  const photoInput = getEl('event-photo-input');
+  const photoPreview = getEl('event-photo-preview');
+  const photoContainer = getEl('event-photo-container');
 
   if (photoInput) {
     photoInput.addEventListener('change', (e) => {
+      if (e.target.files.length === 0) return;
       const file = e.target.files[0];
-      if (!file) return;
-
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
+          let w = img.width, h = img.height;
           const maxDim = 600;
-          let w = img.width;
-          let h = img.height;
           if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
-            }
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
           }
-          canvas.width = w;
-          canvas.height = h;
+          canvas.width = w; canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
           currentBase64Photo = canvas.toDataURL('image/jpeg', 0.65);
@@ -365,18 +382,18 @@ function initEventLogging() {
   if (addEventBtn) {
     addEventBtn.addEventListener('click', () => {
       if (!activeOperator) {
-        document.getElementById('login-modal').style.display = 'flex';
+        setDisplay('login-modal', 'flex');
         return;
       }
-      document.getElementById('event-modal').style.display = 'flex';
-      document.getElementById('event-code-display').innerText = currentScannedCode || 'Muestra';
+      setDisplay('event-modal', 'flex');
+      setInnerText('event-code-display', currentScannedCode || 'Muestra');
       if (eventOperatorInput) eventOperatorInput.value = activeOperator;
     });
   }
 
   if (cancelEventBtn) {
     cancelEventBtn.addEventListener('click', () => {
-      document.getElementById('event-modal').style.display = 'none';
+      setDisplay('event-modal', 'none');
       currentBase64Photo = '';
       if (photoContainer) photoContainer.style.display = 'none';
     });
@@ -392,10 +409,10 @@ function initEventLogging() {
 
       const payload = {
         codigo: currentScannedCode,
-        tipoEvento: document.getElementById('event-type').value,
-        temperatura: document.getElementById('event-temp').value,
-        dureza: document.getElementById('event-hardness').value,
-        observaciones: document.getElementById('event-obs').value,
+        tipoEvento: getVal('event-type'),
+        temperatura: getVal('event-temp'),
+        dureza: getVal('event-hardness'),
+        observaciones: getVal('event-obs'),
         operador: opVal,
         foto: currentBase64Photo
       };
@@ -403,7 +420,7 @@ function initEventLogging() {
       if (!navigator.onLine) {
         addToOfflineQueue('event', payload);
         alert(`¡Evento guardado offline por ${opVal}! Se sincronizará automáticamente al recuperar red.`);
-        document.getElementById('event-modal').style.display = 'none';
+        setDisplay('event-modal', 'none');
         eventForm.reset();
         currentBase64Photo = '';
         if (photoContainer) photoContainer.style.display = 'none';
@@ -420,7 +437,7 @@ function initEventLogging() {
         if (data.success) {
           const advText = data.preAnalisis?.advertencias ? `\n\n⚠️ Aviso Pre-Análisis: ${data.preAnalisis.advertencias}` : '';
           alert(`¡Evento de Ensayo registrado por ${opVal} para ${currentScannedCode}!${advText}`);
-          document.getElementById('event-modal').style.display = 'none';
+          setDisplay('event-modal', 'none');
           eventForm.reset();
           currentBase64Photo = '';
           if (photoContainer) photoContainer.style.display = 'none';
@@ -428,7 +445,7 @@ function initEventLogging() {
       } catch (err) {
         addToOfflineQueue('event', payload);
         alert("Sin respuesta del servidor. Registro almacenado en cola offline.");
-        document.getElementById('event-modal').style.display = 'none';
+        setDisplay('event-modal', 'none');
         eventForm.reset();
         currentBase64Photo = '';
         if (photoContainer) photoContainer.style.display = 'none';
@@ -450,7 +467,8 @@ function initTabs() {
       tabContents.forEach(c => c.classList.remove('active'));
 
       btn.classList.add('active');
-      document.getElementById(`tab-${targetTab}`).classList.add('active');
+      const targetPane = getEl(`tab-${targetTab}`);
+      if (targetPane) targetPane.classList.add('active');
 
       if (targetTab === 'scanner') {
         startScanner();
@@ -463,27 +481,31 @@ function initTabs() {
 
 // Audio Toggle
 function initAudioToggle() {
-  const toggleBtn = document.getElementById('toggle-audio-btn');
-  const icon = document.getElementById('audio-icon');
+  const toggleBtn = getEl('toggle-audio-btn');
+  const icon = getEl('audio-icon');
 
-  toggleBtn.addEventListener('click', () => {
-    audioEnabled = !audioEnabled;
-    if (audioEnabled) {
-      icon.setAttribute('data-lucide', 'volume-2');
-      toggleBtn.style.color = 'var(--text-main)';
-    } else {
-      icon.setAttribute('data-lucide', 'volume-x');
-      toggleBtn.style.color = 'var(--text-muted)';
-    }
-    lucide.createIcons();
-  });
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      audioEnabled = !audioEnabled;
+      if (icon) {
+        if (audioEnabled) {
+          icon.setAttribute('data-lucide', 'volume-2');
+          toggleBtn.style.color = 'var(--text-main)';
+        } else {
+          icon.setAttribute('data-lucide', 'volume-x');
+          toggleBtn.style.color = 'var(--text-muted)';
+        }
+      }
+      if (window.lucide) lucide.createIcons();
+    });
+  }
 }
 
-// QR Scanner & Multi-Camera Enumeration
+// QR Scanner & Multi-Camera / Laptop Webcam Enumeration
 async function initScanner() {
-  const cameraSelect = document.getElementById('camera-select');
+  const cameraSelect = getEl('camera-select');
   if (cameraSelect) {
-    cameraSelect.innerHTML = '<option value="">Cámara Principal (Auto)</option>';
+    cameraSelect.innerHTML = '<option value="">Cámara del sistema (Auto)</option>';
   }
 
   try {
@@ -491,16 +513,16 @@ async function initScanner() {
       html5QrCode = new Html5Qrcode("reader");
     }
   } catch (e) {
-    console.warn("Error al inicializar Html5Qrcode:", e);
+    console.warn("Error al instanciar Html5Qrcode:", e);
   }
 
   try {
-    const timeoutGetCameras = new Promise((_, reject) => setTimeout(() => reject(new Error("getCameras timeout")), 3000));
+    const timeoutGetCameras = new Promise((_, reject) => setTimeout(() => reject(new Error("getCameras timeout")), 2500));
     camerasList = await Promise.race([Html5Qrcode.getCameras(), timeoutGetCameras]);
-    
+
     if (camerasList && camerasList.length > 0 && cameraSelect) {
       cameraSelect.innerHTML = '';
-      
+
       const savedId = localStorage.getItem('preferred_camera_id');
       let defaultIndex = camerasList.findIndex(c => c.id === savedId);
 
@@ -535,16 +557,16 @@ async function initScanner() {
       };
     }
   } catch (err) {
-    console.warn("Enumeración diferida de cámaras:", err);
+    console.warn("Enumeración de cámaras no disponible o diferida:", err);
     if (cameraSelect) {
-      cameraSelect.innerHTML = '<option value="">Cámara Trasera (Auto)</option>';
+      cameraSelect.innerHTML = '<option value="">Cámara por defecto</option>';
     }
   }
 
   initTorch();
-  startScanner();
+  await startScanner();
 
-  const restartBtn = document.getElementById('restart-scan-btn');
+  const restartBtn = getEl('restart-scan-btn');
   if (restartBtn) {
     restartBtn.onclick = () => {
       restartBtn.style.display = 'none';
@@ -554,7 +576,7 @@ async function initScanner() {
 }
 
 function initTorch() {
-  const torchBtn = document.getElementById('toggle-torch-btn');
+  const torchBtn = getEl('toggle-torch-btn');
   if (!torchBtn) return;
 
   torchBtn.style.display = 'inline-flex';
@@ -569,7 +591,7 @@ function initTorch() {
             if (capabilities.torch || 'torch' in track.getConstraints()) {
               torchActive = !torchActive;
               await track.applyConstraints({ advanced: [{ torch: torchActive }] });
-              const labelEl = document.getElementById('torch-label');
+              const labelEl = getEl('torch-label');
               if (torchActive) {
                 torchBtn.classList.add('btn-torch-active');
                 if (labelEl) labelEl.innerText = 'Linterna ON';
@@ -593,8 +615,8 @@ function initTorch() {
 async function startScanner() {
   if (isScanning || !html5QrCode) return;
 
-  const overlay = document.getElementById('scanner-overlay');
-  const statusText = document.getElementById('status-text');
+  const overlay = getEl('scanner-overlay');
+  const statusText = getEl('status-text');
 
   if (overlay) overlay.style.display = 'flex';
   if (statusText) statusText.innerText = "Iniciando cámara...";
@@ -612,7 +634,6 @@ async function startScanner() {
     }
   };
 
-  // Cadena de restricciones adaptativa (Celulares -> Webcam Laptop -> Genérica)
   const constraintsToTry = [];
   if (selectedCameraId) {
     constraintsToTry.push({ deviceId: { exact: selectedCameraId } });
@@ -655,7 +676,7 @@ async function stopScanner() {
     try {
       await html5QrCode.stop();
       isScanning = false;
-      document.getElementById('scanner-overlay').style.display = 'none';
+      setDisplay('scanner-overlay', 'none');
     } catch (err) {
       console.warn("Error al detener el escáner:", err);
     }
@@ -673,8 +694,8 @@ function onScanSuccess(decodedText) {
     currentScannedCode = match[1].toUpperCase();
   }
 
-  document.getElementById('restart-scan-btn').style.display = 'inline-flex';
-  document.getElementById('status-text').innerText = "Código detectado";
+  setDisplay('restart-scan-btn', 'inline-flex');
+  setInnerText('status-text', 'Código detectado');
 
   const scanEntry = {
     id: Date.now(),
@@ -694,7 +715,7 @@ function onScanError(errorMessage) {
 
 // Captura Nativa & Galería
 function initCaptures() {
-  const nativeInput = document.getElementById('qr-native-capture');
+  const nativeInput = getEl('qr-native-capture');
   if (nativeInput) {
     nativeInput.addEventListener('change', async (e) => {
       if (e.target.files.length === 0) return;
@@ -708,7 +729,7 @@ function initCaptures() {
     });
   }
 
-  const fileInput = document.getElementById('qr-file-input');
+  const fileInput = getEl('qr-file-input');
   if (fileInput) {
     fileInput.addEventListener('change', async (e) => {
       if (e.target.files.length === 0) return;
@@ -725,68 +746,82 @@ function initCaptures() {
 
 // Modal handling
 function initModal() {
-  const modal = document.getElementById('result-modal');
-  const closeBtn = document.getElementById('close-modal-btn');
-  const copyBtn = document.getElementById('copy-result-btn');
+  const modal = getEl('result-modal');
+  const closeBtn = getEl('close-modal-btn');
+  const copyBtn = getEl('copy-result-btn');
 
-  closeBtn.addEventListener('click', () => {
-    modal.style.display = 'none';
-  });
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+  }
 
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) modal.style.display = 'none';
-  });
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+  }
 
-  copyBtn.addEventListener('click', () => {
-    const text = document.getElementById('scanned-result-text').innerText;
-    navigator.clipboard.writeText(text);
-    copyBtn.innerHTML = `<i data-lucide="check"></i> ¡Copiado!`;
-    lucide.createIcons();
-    setTimeout(() => {
-      copyBtn.innerHTML = `<i data-lucide="copy"></i> Copiar`;
-      lucide.createIcons();
-    }, 2000);
-  });
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const textEl = getEl('scanned-result-text');
+      const text = textEl ? textEl.innerText : '';
+      navigator.clipboard.writeText(text);
+      copyBtn.innerHTML = `<i data-lucide="check"></i> ¡Copiado!`;
+      if (window.lucide) lucide.createIcons();
+      setTimeout(() => {
+        copyBtn.innerHTML = `<i data-lucide="copy"></i> Copiar`;
+        if (window.lucide) lucide.createIcons();
+      }, 2000);
+    });
+  }
 }
 
 function showResultModal(text) {
-  const modal = document.getElementById('result-modal');
-  const resultText = document.getElementById('scanned-result-text');
-  const timeText = document.getElementById('scanned-time');
-  const badge = document.getElementById('result-type-badge');
-  const openLinkBtn = document.getElementById('open-result-btn');
+  const modal = getEl('result-modal');
+  const resultText = getEl('scanned-result-text');
+  const timeText = getEl('scanned-time');
+  const badge = getEl('result-type-badge');
+  const openLinkBtn = getEl('open-result-btn');
 
-  resultText.innerText = text;
-  timeText.innerText = new Date().toLocaleString();
+  if (resultText) resultText.innerText = text;
+  if (timeText) timeText.innerText = new Date().toLocaleString();
 
   const isUrl = /^https?:\/\//i.test(text);
 
-  if (isUrl) {
-    badge.innerText = "Enlace Web";
-    badge.style.background = "rgba(16, 185, 129, 0.2)";
-    badge.style.color = "var(--accent-success)";
-    openLinkBtn.style.display = "inline-flex";
-    openLinkBtn.href = text;
-  } else {
-    badge.innerText = "Texto Plano";
-    badge.style.background = "rgba(99, 102, 241, 0.2)";
-    badge.style.color = "var(--accent-primary)";
-    openLinkBtn.style.display = "none";
+  if (badge) {
+    if (isUrl) {
+      badge.innerText = "Enlace Web";
+      badge.style.background = "rgba(16, 185, 129, 0.2)";
+      badge.style.color = "var(--accent-success)";
+      if (openLinkBtn) {
+        openLinkBtn.style.display = "inline-flex";
+        openLinkBtn.href = text;
+      }
+    } else {
+      badge.innerText = "Texto Plano";
+      badge.style.background = "rgba(99, 102, 241, 0.2)";
+      badge.style.color = "var(--accent-primary)";
+      if (openLinkBtn) openLinkBtn.style.display = "none";
+    }
   }
 
-  modal.style.display = 'flex';
+  if (modal) modal.style.display = 'flex';
 }
 
 // History Management
 function initHistory() {
   updateHistoryUI();
-  document.getElementById('clear-history-btn').addEventListener('click', () => {
-    if (confirm("¿Estás seguro de borrar el historial?")) {
-      scanHistory = [];
-      localStorage.removeItem('qr_history');
-      updateHistoryUI();
-    }
-  });
+  const clearBtn = getEl('clear-history-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (confirm("¿Estás seguro de borrar el historial?")) {
+        scanHistory = [];
+        localStorage.removeItem('qr_history');
+        updateHistoryUI();
+      }
+    });
+  }
 }
 
 function saveToHistory(text) {
@@ -803,9 +838,11 @@ function saveToHistory(text) {
 }
 
 function updateHistoryUI() {
-  const list = document.getElementById('history-list');
-  const countBadge = document.getElementById('history-count');
-  countBadge.innerText = scanHistory.length;
+  const list = getEl('history-list');
+  const countBadge = getEl('history-count');
+  if (countBadge) countBadge.innerText = scanHistory.length;
+
+  if (!list) return;
 
   if (scanHistory.length === 0) {
     list.innerHTML = `<div class="empty-state">No hay escaneos guardados aún.</div>`;
@@ -824,7 +861,7 @@ function updateHistoryUI() {
     </div>
   `).join('');
 
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
 window.copyHistoryText = function(text) {
@@ -833,46 +870,55 @@ window.copyHistoryText = function(text) {
 };
 
 function escapeHtml(str) {
-  return str.replace(/[&<>"']/g, function(m) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, function(m) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
   });
 }
 
 // QR Generator
 function initGenerator() {
-  const input = document.getElementById('qr-input');
-  const generateBtn = document.getElementById('generate-qr-btn');
-  const resultBox = document.getElementById('qr-result-box');
-  const display = document.getElementById('qrcode-display');
-  const downloadBtn = document.getElementById('download-qr-btn');
+  const input = getEl('qr-input');
+  const generateBtn = getEl('generate-qr-btn');
+  const resultBox = getEl('qr-result-box');
+  const display = getEl('qrcode-display');
+  const downloadBtn = getEl('download-qr-btn');
 
-  generateBtn.addEventListener('click', () => {
-    const val = input.value.trim();
-    if (!val) {
-      alert("Por favor ingresa un texto o enlace.");
-      return;
-    }
+  if (generateBtn) {
+    generateBtn.addEventListener('click', () => {
+      const val = input ? input.value.trim() : '';
+      if (!val) {
+        alert("Por favor ingresa un texto o enlace.");
+        return;
+      }
 
-    display.innerHTML = '';
-    new QRCode(display, {
-      text: val,
-      width: 180,
-      height: 180,
-      colorDark: "#090d16",
-      colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.H
+      if (display) {
+        display.innerHTML = '';
+        new QRCode(display, {
+          text: val,
+          width: 180,
+          height: 180,
+          colorDark: "#090d16",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }
+
+      if (resultBox) resultBox.style.display = 'flex';
     });
+  }
 
-    resultBox.style.display = 'flex';
-  });
-
-  downloadBtn.addEventListener('click', () => {
-    const img = display.querySelector('img') || display.querySelector('canvas');
-    if (img) {
-      const a = document.createElement('a');
-      a.href = img.src || img.toDataURL("image/png");
-      a.download = "codigo-qr.png";
-      a.click();
-    }
-  });
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', () => {
+      if (display) {
+        const img = display.querySelector('img') || display.querySelector('canvas');
+        if (img) {
+          const a = document.createElement('a');
+          a.href = img.src || img.toDataURL("image/png");
+          a.download = "codigo-qr.png";
+          a.click();
+        }
+      }
+    });
+  }
 }
