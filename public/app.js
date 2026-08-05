@@ -597,7 +597,7 @@ async function startScanner() {
   const statusText = document.getElementById('status-text');
 
   if (overlay) overlay.style.display = 'flex';
-  if (statusText) statusText.innerText = "Escaneando...";
+  if (statusText) statusText.innerText = "Iniciando cámara...";
 
   const config = {
     fps: 15,
@@ -612,30 +612,41 @@ async function startScanner() {
     }
   };
 
-  const cameraConstraint = selectedCameraId ? { deviceId: { exact: selectedCameraId } } : { facingMode: "environment" };
+  // Cadena de restricciones adaptativa (Celulares -> Webcam Laptop -> Genérica)
+  const constraintsToTry = [];
+  if (selectedCameraId) {
+    constraintsToTry.push({ deviceId: { exact: selectedCameraId } });
+  }
+  constraintsToTry.push({ facingMode: "environment" });
+  constraintsToTry.push({ facingMode: "user" });
+  constraintsToTry.push({});
 
-  try {
-    await html5QrCode.start(
-      cameraConstraint,
-      config,
-      onScanSuccess,
-      onScanError
-    );
-    isScanning = true;
-  } catch (err) {
-    console.warn("No se pudo iniciar con la cámara seleccionada, probando facingMode fallback:", err);
+  let started = false;
+  for (const constraint of constraintsToTry) {
     try {
       await html5QrCode.start(
-        { facingMode: "environment" },
+        constraint,
         config,
         onScanSuccess,
         onScanError
       );
       isScanning = true;
-    } catch (e) {
-      console.warn("Fallo en fallback de cámara:", e);
-      if (statusText) statusText.innerText = "Haz clic para autorizar cámara";
+      started = true;
+      if (statusText) statusText.innerText = "Listo para escanear";
+      break;
+    } catch (err) {
+      console.warn("Intento de cámara no exitoso con restricción:", constraint, err.message || err);
+      try {
+        if (html5QrCode.isScanning) {
+          await html5QrCode.stop();
+        }
+      } catch (e) {}
     }
+  }
+
+  if (!started) {
+    if (statusText) statusText.innerText = "Cámara inactiva (Subir imagen o archivo)";
+    if (overlay) overlay.style.display = 'none';
   }
 }
 
